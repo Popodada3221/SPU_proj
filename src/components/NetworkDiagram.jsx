@@ -403,7 +403,7 @@ useImperativeHandle(ref, () => ({
     const baseX = 120;
     const baseY = 150;
     const levelSpacing = 300;
-    const nodeSpacing = 160;  
+    const nodeSpacing = 240;  
 
     levelGroups.forEach((levelNodes, level) => {
       levelNodes.sort((a, b) => a.id - b.id);
@@ -415,8 +415,10 @@ useImperativeHandle(ref, () => ({
         node.x = baseX + level * levelSpacing;
         node.y = startY + index * nodeSpacing;
         
+        // для драг-н-дропа костыль
+      
         if (levelNodes.length > 1) {
-          node.y += (Math.random() - 0.5) * 30;
+          //node.y += (Math.random() - 0.5) * 30;
         }
         
         const relatedTasks = tasks.filter(task => {
@@ -615,6 +617,8 @@ useImperativeHandle(ref, () => ({
 
       const padding = 8;
       const lineHeight = 14; 
+      // высота и длина прямоугольника с текстом
+      // TODO: посмотреть радиус круга, для смещения текста
       const bgHeight = lineHeight * 2 + padding * 2;
       const bgWidth = maxWidth + padding * 2;
 
