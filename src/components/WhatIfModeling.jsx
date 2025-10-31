@@ -152,6 +152,8 @@ const WhatIfModeling = ({ originalProject, originalResults }) => {
     setCurrentScenario(updatedScenario);
     
 
+        
+
     setSelectedTask('');
     setChangeValue(0);
   };
