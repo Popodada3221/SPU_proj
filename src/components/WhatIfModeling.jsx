@@ -291,7 +291,6 @@ const WhatIfModeling = ({ originalProject, originalResults }) => {
 
     const exampleChanges = {};
     
-    // Создаем более интересный пример
     const firstTask = baseProject.tasks[0];
     const secondTask = baseProject.tasks[1];
     

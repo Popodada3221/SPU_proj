@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +18,6 @@ import {
 } from 'lucide-react';
 
 const ResourceManagement = ({ results, project }) => {
-  const [selectedResource, setSelectedResource] = useState(null);
   const [timeFilter, setTimeFilter] = useState('all');
 
   const analysis = useMemo(() => {
@@ -155,7 +153,6 @@ const ResourceManagement = ({ results, project }) => {
 
   return (
     <div className="space-y-6">
-      {/* Сводная информация */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -206,7 +203,7 @@ const ResourceManagement = ({ results, project }) => {
         </Card>
       </div>
 
-      {/* Рекомендации */}
+
       {analysis.recommendations.length > 0 && (
         <Card>
           <CardHeader>
@@ -247,7 +244,6 @@ const ResourceManagement = ({ results, project }) => {
           <TabsTrigger value="timeline">Временная шкала</TabsTrigger>
         </TabsList>
 
-        {/* Анализ критического пути */}
         <TabsContent value="critical-path">
           <Card>
             <CardHeader>
@@ -322,7 +318,6 @@ const ResourceManagement = ({ results, project }) => {
           </Card>
         </TabsContent>
 
-        {/* Анализ ресурсов */}
         <TabsContent value="resources">
           <Card>
             <CardHeader>
@@ -382,7 +377,6 @@ const ResourceManagement = ({ results, project }) => {
           </Card>
         </TabsContent>
 
-        {/* Временная шкала */}
         <TabsContent value="timeline">
           <Card>
             <CardHeader>

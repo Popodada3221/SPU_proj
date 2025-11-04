@@ -16,8 +16,8 @@ import {
   Eye,
   EyeOff,
   Palette,
-  Maximize, // Добавлен для полноэкранного режима
-  Minimize, // Добавлен для полноэкранного режима
+  Maximize, 
+  Minimize
 } from 'lucide-react';
 
 const NetworkDiagram = forwardRef(({ results, onRenderModeChange, isFullScreen, onToggleFullScreen }, ref) => {
@@ -241,11 +241,9 @@ useImperativeHandle(ref, () => ({
     }));
     
     if (renderMode === 'aon') {
-      // Build AON graph (tasks as nodes, dependencies as edges) with transitive reduction
       const { aonNodes, aonEdges } = buildAONGraph(tasksForRender, results);
       positionAONNodes(aonNodes, aonEdges);
 
-      // Measure nodes (dynamic width/height) before drawing
       measureAONNodes(ctx, aonNodes);
 
       ctx.save();
@@ -641,7 +639,6 @@ useImperativeHandle(ref, () => ({
     ctx.restore();
   };
 
-  // ===== AON (Activity-on-Node) simplified rendering helpers =====
 
   const parseEdge = (t) => {
     const [from, to] = String(t.id).split('-').map(Number);
@@ -685,7 +682,6 @@ useImperativeHandle(ref, () => ({
   };
 
   const reduceTransitive = (nodes, edges) => {
-    // edges: [{from: id, to: id}], nodes: [{id: ...}]
     const out = new Map();
     const nodeIds = new Set(nodes.map(n => n.id));
     edges.forEach(e => {
@@ -693,7 +689,7 @@ useImperativeHandle(ref, () => ({
       out.get(e.from).add(e.to);
     });
 
-    const reaches = new Map(); // nodeId -> Set of reachable nodes
+    const reaches = new Map(); 
     const computeReach = (u) => {
       if (reaches.has(u)) return reaches.get(u);
       const visited = new Set([u]);
@@ -714,7 +710,7 @@ useImperativeHandle(ref, () => ({
       return reach;
     };
 
-    // Remove (u->v) if there exists w such that u->w and w reaches v
+
     const keep = [];
     for (const e of edges) {
       let isTransitive = false;
@@ -739,12 +735,10 @@ useImperativeHandle(ref, () => ({
       name: e.name || String(e.id),
       duration: Number(e.duration) || 0,
       isCritical: !!e.isCritical,
-      // carry timing to highlight critical edges in sequence
       _ES: Number(e.earlyStart ?? e.ES ?? e.earlyStart),
       _EF: Number(e.earlyFinish ?? e.EF ?? e.earlyFinish),
       _LS: Number(e.lateStart ?? e.LS ?? e.lateStart),
       _LF: Number(e.lateFinish ?? e.LF ?? e.lateFinish),
-      // position placeholders
       x: 0,
       y: 0,
     }));
@@ -758,7 +752,7 @@ useImperativeHandle(ref, () => ({
       });
     });
 
-    // Deduplicate
+
     const seen = new Set();
     const aonEdgesDedup = aonEdgesRaw.filter(e => {
       const key = `${e.from}->${e.to}`;
@@ -767,10 +761,7 @@ useImperativeHandle(ref, () => ({
       return true;
     });
 
-    // Transitive reduction
     let aonEdges = reduceTransitive(aonNodes, aonEdgesDedup);
-
-    // Add synthetic FINISH node to collect terminal tasks (for readability)
     const outDeg = new Map(aonNodes.map(n => [n.id, 0]));
     aonEdges.forEach(e => {
       outDeg.set(e.from, (outDeg.get(e.from) || 0) + 1);
@@ -810,7 +801,6 @@ useImperativeHandle(ref, () => ({
       inAdj.get(e.to).push(e.from);
     });
 
-    // Kahn with level assignment (longest distance from sources)
     const level = new Map(nodes.map(n => [n.id, 0]));
     const q = [];
     nodes.forEach(n => { if ((inDeg.get(n.id) || 0) === 0) q.push(n.id); });
@@ -858,7 +848,6 @@ useImperativeHandle(ref, () => ({
     ctx.fillStyle = node.isCritical ? colors.criticalNode : colors.normalNode;
     ctx.strokeStyle = node.isCritical ? colors.criticalEdge : colors.normalEdge;
     ctx.lineWidth = 2;
-    // rounded rect
     ctx.beginPath();
     ctx.moveTo(x+r, y);
     ctx.arcTo(x+w, y, x+w, y+h, r);
@@ -870,13 +859,11 @@ useImperativeHandle(ref, () => ({
     ctx.stroke();
     ctx.restore();
 
-    // Text
     const padding = 10;
     const lineHeight = 14;
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    // Title lines
     ctx.font = 'bold 12px Arial';
     const lines = Array.isArray(node._lines) && node._lines.length ? node._lines : [node.name];
     const totalTitleHeight = lines.length * lineHeight;
@@ -884,7 +871,6 @@ useImperativeHandle(ref, () => ({
     lines.forEach((ln, i) => {
       ctx.fillText(ln, node.x, cursorY + i * lineHeight);
     });
-    // Duration line
     ctx.font = '11px Arial';
     ctx.fillText(node._durationText || `(${Number(node.duration)||0}д)`, node.x, node.y + (totalTitleHeight/2) + 10);
   };
@@ -901,7 +887,6 @@ useImperativeHandle(ref, () => ({
     const endY = to.y - Math.sin(angle) * toPad;
     ctx.save();
     ctx.setLineDash([]);
-    // Critical edge heuristic: both tasks critical and consecutive by ES/EF
     const approxEq = (a,b) => {
       const x = Number(a), y = Number(b);
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
@@ -924,7 +909,6 @@ useImperativeHandle(ref, () => ({
     ctx.restore();
   };
 
-  // Measure AON node sizes and wrap titles dynamically
   const measureAONNodes = (ctx, nodes) => {
     const minW = 140;
     const maxW = 280;
@@ -932,7 +916,6 @@ useImperativeHandle(ref, () => ({
     const lineHeight = 14;
     nodes.forEach(n => {
       const durationText = `(${Number(n.duration)||0}д)`;
-      // compute target width by trying to wrap title within maxW
       ctx.font = 'bold 12px Arial';
       const titleLines = wrapText(ctx, String(n.name||''), maxW - padding*2);
       const titleMaxWidth = Math.max(...titleLines.map(t => ctx.measureText(t).width), 0);
@@ -940,7 +923,7 @@ useImperativeHandle(ref, () => ({
       const durationWidth = ctx.measureText(durationText).width;
       const contentWidth = Math.max(titleMaxWidth, durationWidth);
       const w = Math.max(minW, Math.min(maxW, contentWidth + padding*2));
-      const h = padding*2 + titleLines.length * lineHeight + 20; // 20 for duration line spacing
+      const h = padding*2 + titleLines.length * lineHeight + 20;
       n._w = w;
       n._h = h;
       n._lines = titleLines;
@@ -959,7 +942,6 @@ useImperativeHandle(ref, () => ({
         cur = test;
       } else {
         if (!cur) {
-          // Very long word: hard-break
           let chunk='';
           for (let ch of w) {
             const t2 = chunk + ch;
@@ -1168,7 +1150,6 @@ const drawNodeLabel = (ctx, node) => {
               </select>
             </div>
 
-            {/* Кнопка управления фиктивными работами в AOA убрана по требованию */}
             
             <div className="text-sm text-muted-foreground">
               Масштаб: {(scale * 100).toFixed(0)}%

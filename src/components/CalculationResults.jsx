@@ -1,9 +1,9 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Calculator, 
   Download, 
@@ -19,14 +19,13 @@ import ResourceManagement from './ResourceManagement';
 
 const formatNumberForCSV = (num) => {
   const number = Number(num);
-  if (Number.isFinite(number)) {
-    return number.toFixed(2).replace('.', ',');
+  if (!Number.isFinite(number)) {
+    return '0,00';
   }
-  return '0,00';
+  return String(Number(number.toFixed(2))).replace('.', ',');
 };
 
 const CalculationResults = ({ results, project }) => {
-  const [selectedTask, setSelectedTask] = useState(null);
   const [hideDummies, setHideDummies] = useState(false);
 
   if (!results || !results.tasks || results.tasks.length === 0) {
@@ -48,58 +47,66 @@ const CalculationResults = ({ results, project }) => {
     );
   }
 
-  const exportToCSV = () => {
+ const exportToCSV = () => {
     const headers = [
-      'ID работы',
-      'Наименование работы',
-      'Продолжительность (дни)',
-      'Трудоемкость (н-ч)',
-      'Количество исполнителей',
-      'Предшественники',
-      'Раннее начало',
-      'Раннее окончание',
-      'Позднее начало',
-      'Позднее окончание',
-      'Полный резерв',
-      'Частный резерв',
-      'Критическая работа'
+      'Код работы',
+      'Наименование',
+      'Продолжительность (ч)',
+      'Трудоемкость н/ч',
+      'Кол-во исполнителей',
+      'Ранний срок предш. события (ч)',
+      'Раннее окончание работы (ч)',
+      'Ранний срок послед. события (ч)',
+      'Поздний срок предш. события (ч)',
+      'Позднее начало работы (ч)',
+      'Поздний срок послед. события (ч)',
+      'Резерв времени послед. события (ч)',
+      'Частный резерв работы (ч)',
+      'Полный резерв работы (ч)',
+      'Принадлежность к крит. пути'
     ];
 
     const csvContent = [
       headers.join(';'),
-      ...results.tasks.map(task => {
-        const taskIdAsFormula = `="${task.id}"`;
-        return [
-          taskIdAsFormula,
+      ...visibleTasks.map(task =>  {
+
+
+        const row = [
+          `"=""${task.id}"""`,
           `"${task.name}"`,
-          task.duration,
-          task.laborIntensity || 0,
+          formatNumberForCSV(task.duration),
+          formatNumberForCSV(task.laborIntensity),
           task.numberOfPerformers,
-          `"${(task.predecessors || []).join(', ')}"`,
-          formatNumberForCSV(task.earlyStart),
+          formatNumberForCSV(task.earlyEventTimeI),
           formatNumberForCSV(task.earlyFinish),
+          formatNumberForCSV(task.earlyEventTimeJ),
+          formatNumberForCSV(task.lateEventTimeI),
           formatNumberForCSV(task.lateStart),
           formatNumberForCSV(task.lateFinish),
-          formatNumberForCSV(task.totalFloat),
+          formatNumberForCSV(task.eventFloatJ),
           formatNumberForCSV(task.freeFloat),
-          (!task.isDummy && task.isCritical) ? 'Да' : 'Нет'
-        ].join(';');
+          formatNumberForCSV(task.totalFloat),
+          task.isCritical ? 'Да' : 'Нет'
+        ];
+        return row.join(';');
       })
     ].join('\n');
 
     const dataBlob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    
     const link = document.createElement('a');
     link.href = URL.createObjectURL(dataBlob);
     link.download = `spu_results_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+      };
 
   const criticalTasks = results.tasks.filter(t => !t.isDummy && t.isCritical);  
   const nonCriticalTasks = results.tasks.filter(t => !t.isDummy && !t.isCritical);
-  const visibleTasks = hideDummies ? results.tasks.filter(t => !t.isDummy) : results.tasks;
+  const allTasks = results?.tasks || [];
+  const visibleTasks = hideDummies 
+    ? allTasks.filter(t => t.isDummy !== true && t.duration > 0) 
+    : allTasks;
 
   const parseFromTo = (task) => {
     const parts = String(task.id).split('-');
@@ -125,6 +132,12 @@ const CalculationResults = ({ results, project }) => {
     }
     return pathTasks;
   })();
+
+   const renderCell = (value, style = {}) => (
+  <td style={style} className="border border-gray-300 px-3 py-2 text-center">
+    {formatNumberForCSV(value)}
+  </td>
+);
 
   return (
     <div className="space-y-6">
@@ -207,7 +220,6 @@ const CalculationResults = ({ results, project }) => {
                     );
                   })}
                 </div>
-                {/* описание убрано по требованию */}
               </div>
             ) : null}
             <p className="text-sm text-muted-foreground mt-2">
@@ -254,137 +266,55 @@ const CalculationResults = ({ results, project }) => {
                 <table className="w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-3 py-2 text-left font-medium">
-                        Код работы
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-left font-medium">
-                        Наименование работы
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Продолжительность, дни
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Трудоемкость, н-ч
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Количество исполнителей
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Раннее начало
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Раннее окончание
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Позднее начало
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Позднее окончание
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Полный резерв времени
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Частный резерв времени
-                      </th>
-                      <th className="border border-gray-300 px-3 py-2 text-center font-medium">
-                        Принадлежность к критическому пути
-                      </th>
+                      <th style={{ width: '100px' }} className="border border-gray-300 p-2 text-left font-medium">Код работы</th>
+                      <th style={{ minWidth: '100px' }} className="border border-gray-300 p-2 text-left font-medium">Наименование</th>
+                      <th style={{ width: '110px' }} className="border border-gray-300 p-2 text-center font-medium">Продолжительность (ч) (t<sub>ij</sub>)</th>
+                      <th style={{ width: '110px' }} className="border border-gray-300 p-2 text-center font-medium">Трудоемкость н/ч (Q<sub>ij</sub>)</th>
+                      <th style={{ width: '100px' }} className="border border-gray-300 p-2 text-center font-medium">Кол-во исполнителей (q<sub>ij</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Ранний срок предш. события (T<sup>p</sup><sub>i</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Раннее окончание работы (t<sup>po</sup><sub>ij</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Ранний срок послед. события (T<sup>p</sup><sub>j</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Поздний срок предш. события (T<sup>п</sup><sub>i</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Позднее начало работы (t<sup>пн</sup><sub>ij</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Поздний срок послед. события (T<sup>п</sup><sub>j</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Резерв времени послед. события (R<sub>j</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Частный резерв работы (R<sup>ч</sup><sub>ij</sub>)</th>
+                      <th style={{ width: '120px' }} className="border border-gray-300 p-2 text-center font-medium">Полный резерв работы (R<sup>п</sup><sub>ij</sub>)</th>
+                      <th style={{ width: '130px' }} className="border border-gray-300 p-2 text-center font-medium">Принадлежность к крит. пути</th>
                     </tr>
                   </thead>
                   <tbody>
                     {visibleTasks.map((task, index) => {
                       const isCriticalVisual = !task.isDummy && task.isCritical;
-                      const baseBg = isCriticalVisual
-                        ? 'bg-red-50'
-                        : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50');
-                      const displayId = hideDummies ? (task.sourceTaskId || task.id) : task.id;
+                      const rowClass = isCriticalVisual ? 'bg-red-50' : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+                      
                       return (
-                        <tr
-                          key={task.id}
-                          className={`${baseBg} hover:bg-blue-50 cursor-pointer`}
-                          onClick={() => setSelectedTask(selectedTask === task.id ? null : task.id)}
-                        >
-                          <td className="border border-gray-300 px-3 py-2 font-medium">
-                            {displayId}
-                            {isCriticalVisual && <Badge variant="destructive" className="ml-2 text-xs">К</Badge>}
-                            {task.isDummy && <Badge variant="outline" className="ml-2 text-xs">Фиктивная</Badge>}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2">
-                            {task.name}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.duration}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.laborIntensity ?? task.duration}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.numberOfPerformers}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.earlyStart?.toFixed(2) || '0.00'}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.earlyFinish?.toFixed(2) || task.duration?.toFixed(2)}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.lateStart?.toFixed(2) || '0.00'}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {task.lateFinish?.toFixed(2) || task.duration?.toFixed(2)}
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            <span className={task.totalFloat > 0.001 ? 'text-orange-600 font-medium' : 'text-gray-500'}>
-                              {task.totalFloat?.toFixed(2) || '0.00'}
-                            </span>
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            <span className={task.freeFloat > 0.001 ? 'text-blue-600 font-medium' : 'text-gray-500'}>
-                              {task.freeFloat?.toFixed(2) || '0.00'}
-                            </span>
-                          </td>
-                          <td className="border border-gray-300 px-3 py-2 text-center">
-                            {isCriticalVisual ? (
-                              <Badge variant="destructive">Да</Badge>
-                            ) : (
-                              <Badge variant="outline">Нет</Badge>
-                            )}
-                          </td>
-                        </tr>
+                       <tr key={task.id} className={`${rowClass} hover:bg-blue-50`}>
+                        <td style={{ width: '100px' }} className="border border-gray-300 px-3 py-2 font-medium">{task.id}</td>
+                        <td style={{ minWidth: '200px', wordBreak: 'break-word' }} className="border border-gray-300 px-3 py-2">{task.name}</td>
+                        {renderCell(task.duration, { width: '130px' })}
+                        {renderCell(task.laborIntensity, { width: '130px' })}
+                        {renderCell(task.numberOfPerformers, { width: '120px' })}
+                        {renderCell(task.earlyEventTimeI, { width: '120px' })}
+                        {renderCell(task.earlyFinish, { width: '120px' })}
+                        {renderCell(task.earlyEventTimeJ, { width: '120px' })}
+                        {renderCell(task.lateEventTimeI, { width: '120px' })}
+                        {renderCell(task.lateStart, { width: '120px' })}
+                        {renderCell(task.lateFinish, { width: '120px' })}
+                        {renderCell(task.eventFloatJ, { width: '120px' })}
+                        {renderCell(task.freeFloat, { width: '120px' })}
+                        {renderCell(task.totalFloat, { width: '120px' })}
+                        <td style={{ width: '130px' }} className="border border-gray-300 px-3 py-2 text-center">
+                          {isCriticalVisual ? <Badge variant="destructive">Да</Badge> : <Badge variant="outline">Нет</Badge>}
+                        </td>
+                      </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
               
-              {selectedTask && (
-                <Alert className="mt-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Детали работы {selectedTask}:</strong>
-                    {(() => {
-                      const task = results.tasks.find(t => t.id === selectedTask);
-                      return task ? (
-                        <div className="mt-2 space-y-1 text-sm">
-                          <p>Предшественники: {task.predecessors.length > 0 ? task.predecessors.join(', ') : 'нет'}</p>
-                          <p>Резерв времени: {task.totalFloat > 0.001 ? `${task.totalFloat.toFixed(2)} дней` : 'отсутствует'}</p>
-                          <p>Статус: 
-                            {(() => { 
-                              const isCriticalVisual = !task.isDummy && task.isCritical;
-                              return (
-                                <p>
-                                  Статус: {task.isDummy ? 'фиктивная работа' : (isCriticalVisual ? 'критическая работа' : 'некритическая работа')}
-                                </p>
-                              );
-                            })()}
-                          </p>
-                        </div>
-                      ) : null;
-                    })()}
-                  </AlertDescription>
-                </Alert>
-              )}
+              
 
               <div className="mt-4 text-sm text-muted-foreground">
                 <p><strong>Обозначения:</strong></p>

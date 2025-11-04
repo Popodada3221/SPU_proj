@@ -21,56 +21,54 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const staticQualifications = [
+  { id: 1, name: 'Стажер', efficiency_multiplier: 0.8 },
+  { id: 2, name: 'Специалист', efficiency_multiplier: 1.0 },
+  { id: 3, name: 'Ведущий специалист', efficiency_multiplier: 1.2 },
+  { id: 4, name: 'Эксперт', efficiency_multiplier: 1.5 },
+];
+
+const HOURS_PER_DAY=8;
 
 
-const HOURS_PER_DAY = 6;
-
-function computeDurationDays(laborHours, performers, hoursPerDay = HOURS_PER_DAY) {
-  const perf = Math.max(1, parseInt(performers) || 1);
-  const hours = Math.max(0, parseFloat(laborHours) || 0);
-  const d = hours / (hoursPerDay * perf);
-  return Math.max(0.1, Math.ceil(d * 10) / 10); 
-}
 
 const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange, isLimitExceeded, maxPerformers, lastNumericLimit, onLastNumericLimitChange  }) => {
- const [localResourceLimit, setLocalResourceLimit] = useState(resourceLimit);
+  const [qualifications, setQualifications] = useState(staticQualifications);
+  const [showQualificationReview, setShowQualificationReview] = useState(false);
+
+
+  const [localResourceLimit, setLocalResourceLimit] = useState(resourceLimit);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    id: '',
+     id: '',
     name: '',
-    duration: '',
+    duration: '', 
     laborIntensity: '',
     numberOfPerformers: '1',
-    predecessors: ''
+    predecessors: '',
+    qualificationId: '2',
+    efficiencyMultiplier: '1.0'
   });
   useEffect(() => {
   setLocalResourceLimit(resourceLimit);
 }, [resourceLimit]);
 
   const [editingTask, setEditingTask] = useState(null);
-
   const [missingReq, setMissingReq] = useState([]); 
   const [formError, setFormError] = useState(''); 
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
+    const handleInputChange = (field, value) => {
+  setFormData(prev => ({
+    ...prev,
+    [field]: value
+  }));
 
-      if (field === 'numberOfPerformers' && next.laborIntensity) {
-        const laborHours = parseFloat(next.laborIntensity) || 0;
-        next.duration = String(computeDurationDays(laborHours, value));
-      }
-      if (field === 'laborIntensity') {
-        const laborHours = parseFloat(value) || 0;
-        next.duration = String(computeDurationDays(laborHours, next.numberOfPerformers));
-      }
-      return next;
-    });
-
-    if (field === 'id' || field === 'name') setMissingReq([]); 
+  if (field === 'id' || field === 'name') {
+    setMissingReq([]); 
     setFormError(''); 
-  };
-
+  }
+};
+  
   const handleNameText = (text) => { 
     setFormData(f => ({ ...f, name: text })); 
     setMissingReq([]); 
@@ -78,66 +76,53 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (
-      !String(formData.id).trim() || 
-      !String(formData.name).trim() || 
-      !String(formData.duration).trim() || 
-      !String(formData.numberOfPerformers).trim() 
-    ) {
-      setFormError('Пожалуйста, заполните все обязательные поля'); 
+  if (!String(formData.id).trim() || !String(formData.name).trim() || !String(formData.duration).trim()) {
+    setFormError('Пожалуйста, заполните все обязательные поля'); 
+    return;
+  }
+
+  const predecessors = formData.predecessors.split(',').map(p => p.trim()).filter(Boolean);
+
+  const durationInHours = parseFloat(formData.duration) * HOURS_PER_DAY;
+
+  const newTask = createTask(
+    formData.id,
+    formData.name,
+    durationInHours, 
+    formData.laborIntensity, 
+    formData.numberOfPerformers,
+    predecessors
+  );
+
+  if (editingTask) {
+    const updatedTasks = tasks.map(task => task.id === editingTask.id ? newTask : task);
+    onTasksChange(updatedTasks);
+    setEditingTask(null);
+  } else {
+    if (tasks.some(task => task.id === formData.id)) {
+      setFormError('Работа с таким ID уже существует');
       return;
     }
+    onTasksChange([...tasks, newTask]);
+  }
 
-    const predecessors = formData.predecessors
-      .split(',')
-      .map(p => p.trim())
-      .filter(Boolean);
-
-    const newTask = createTask(
-      formData.id,
-      formData.name,
-      parseFloat(formData.duration),
-      (formData.laborIntensity !== '' ? parseFloat(formData.laborIntensity) : null),
-      parseInt(formData.numberOfPerformers),
-      predecessors
-    );
-
-    if (editingTask) {
-      const updatedTasks = tasks.map(task =>
-        task.id === editingTask.id ? newTask : task
-      );
-      onTasksChange(updatedTasks);
-      setEditingTask(null);
-    } else {
-      if (tasks.some(task => task.id === formData.id)) {
-        setFormError('Работа с таким ID уже существует');
-        return;
-      }
-      onTasksChange([...tasks, newTask]);
-    }
-
-    setFormData({
-      id: '',
-      name: '',
-      duration: '',
-      laborIntensity: '',
-      numberOfPerformers: '1',
-      predecessors: ''
-    });
-    setMissingReq([]);
-    setFormError(''); 
-  };
+  setFormData({
+    id: '', name: '', duration: '', laborIntensity: '', numberOfPerformers: '1', predecessors: '', qualificationId: '2', efficiencyMultiplier: '1.0'
+  });
+};
 
   const handleEdit = (task) => {
     setFormData({
       id: task.id,
       name: task.name,
-      duration: String(task.duration),
+      duration: String(task.duration/ HOURS_PER_DAY), 
       laborIntensity: String(task.laborIntensity ?? ''),
       numberOfPerformers: String(task.numberOfPerformers),
-      predecessors: task.predecessors.join(', ')
+      predecessors: task.predecessors.join(', '),
+      qualificationId: String(task.qualificationId || '2'),
+      efficiencyMultiplier: String(task.efficiencyMultiplier || '1.0')
     });
     setEditingTask(task);
     setMissingReq([]);
@@ -151,15 +136,10 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
     }
   };
 
-  const cancelEdit = () => {
+   const cancelEdit = () => {
     setEditingTask(null);
     setFormData({
-      id: '',
-      name: '',
-      duration: '',
-      laborIntensity: '',
-      numberOfPerformers: '1',
-      predecessors: ''
+      id: '', name: '', duration: '', laborIntensity: '', numberOfPerformers: '1', predecessors: '', qualificationId: '2', efficiencyMultiplier: '1.0'
     });
     setMissingReq([]);
     setFormError(''); 
@@ -198,6 +178,7 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
           </div>
         </div>
       </CardHeader>  
+
         <CardContent>
           {tasks.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
@@ -219,9 +200,9 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
-                      <div>Длительность: {task.duration} дн.</div>
+                     <div>Продолжительность: {Number((task.duration / HOURS_PER_DAY).toFixed(2))} дн. ({Number(task.duration.toFixed(2))} ч.)</div>
                       <div>Трудоемкость: {task.laborIntensity} н-ч</div>
-                      <div>Исполнители: {task.numberOfPerformers} чел.</div>
+                      <div>Исполнители: {task.numberOfPerformers} чел. ({qualifications.find(q => q.id === task.qualificationId)?.name || 'Не указана'})</div>
                       <div>Предшественники: {task.predecessors.length > 0 ? task.predecessors.join(', ') : 'нет'}</div>
                     </div>
                   </div>
@@ -240,66 +221,85 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
         </CardContent>
       </Card>
 
-
       <Card>
          <CardHeader>
-  <div className="flex items-center justify-between">
-    <CardTitle className="flex items-center gap-2">
-      <Plus className="h-5 w-5" />
-      {editingTask ? 'Редактировать работу' : 'Добавить работу'}
-    </CardTitle>
-    
-            <div className="flex items-center gap-4">
-  <Label className="text-sm text-muted-foreground">
-    Лимит исполнителей:
-  </Label>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              {editingTask ? 'Редактировать работу' : 'Добавить работу'}
+            </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setShowQualificationReview(prev => !prev)}>
+              {showQualificationReview ? 'Скрыть обзор' : 'Обзор квалификаций'}
+          </Button>
+          
+          <div className="flex items-center gap-4">
+          <Label className="text-sm text-muted-foreground">
+            Лимит исполнителей:
+          </Label>
 
-  <Button
-    variant={resourceLimit === Infinity ? "secondary" : "outline"}
-    size="sm"
-    onClick={() => {
-      if (resourceLimit === Infinity) {
-        onResourceLimitChange(lastNumericLimit);
-      } else {
-        onLastNumericLimitChange(localResourceLimit);
-        onResourceLimitChange(Infinity);
-      }
-    }}
-    className="w-[110px] flex items-center gap-2"
-  >
-    <InfinityIcon className="h-4 w-4" />
-    Безлимит
-  </Button>
+          <Button
+            variant={resourceLimit === Infinity ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => {
+              if (resourceLimit === Infinity) {
+                onResourceLimitChange(lastNumericLimit);
+              } else {
+                onLastNumericLimitChange(localResourceLimit);
+                onResourceLimitChange(Infinity);
+              }
+            }}
+            className="w-[110px] flex items-center gap-2"
+          >
+            <InfinityIcon className="h-4 w-4" />
+            Безлимит
+          </Button>
 
-  <div className="w-[150px]">
-    {resourceLimit !== Infinity && (
-      <div className="flex items-center gap-2">
-        <Input
-          id="resourceLimit"
-          type="number"
-          value={localResourceLimit}
-          onChange={(e) => setLocalResourceLimit(Number(e.target.value) > 0 ? Number(e.target.value) : 1)}
-          className="h-8 w-16"
-          min="1"
-        />
-        
-        {localResourceLimit !== resourceLimit && (
-          <div className="flex items-center">
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:bg-accent" onClick={() => setConfirmModalOpen(true)} title="Применить">
-              <Check className="h-5 w-5" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-accent" onClick={() => setLocalResourceLimit(resourceLimit)} title="Отмена">
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        )}
-      </div>
-    )}
-  </div>
-</div>
-  </div>
-</CardHeader>
+          <div className="w-[150px]">
+            {resourceLimit !== Infinity && (
+              <div className="flex items-center gap-2">
+                <Input
+                  id="resourceLimit"
+                  type="number"
+                  value={localResourceLimit}
+                  onChange={(e) => setLocalResourceLimit(Number(e.target.value) > 0 ? Number(e.target.value) : 1)}
+                  className="h-8 w-16"
+                  min="1"
+                />
+                {localResourceLimit !== resourceLimit && (
+                  <div className="flex items-center">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600 hover:bg-accent" onClick={() => setConfirmModalOpen(true)} title="Применить">
+                      <Check className="h-5 w-5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-accent" onClick={() => setLocalResourceLimit(resourceLimit)} title="Отмена">
+                      <X className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+           </div>
+      </CardHeader>
+
         <CardContent>
+           {showQualificationReview && (
+            <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+              <h4 className="font-semibold mb-2">Обзор квалификаций</h4>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-1">Квалификация</th>
+                    <th className="text-right py-1">Эффективность</th>
+                  </tr></thead>
+                <tbody>{qualifications.map(q => (<tr key={q.id} className="border-b last:border-b-0">
+                  <td className="text-left py-1">{q.name}</td>
+                  <td className="text-right py-1">{q.efficiency_multiplier}</td>
+                    </tr>))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="id">ID работы *</Label>
@@ -320,32 +320,6 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
                 onChange={handleNameText} 
                 onInputChange={handleNameText} 
                 onTextChange={handleNameText} 
-
-                onSelect={({ template, required }) => {
-                  const laborHours = typeof template?.base_duration_minutes === 'number'
-                    ? Math.ceil((template.base_duration_minutes / 60) * 10) / 10
-                    : null;
-
-                  const durationDays = laborHours != null
-                    ? String(computeDurationDays(laborHours, formData.numberOfPerformers))
-                    : formData.duration;
-
-                  setFormData(f => ({
-                    ...f,
-                    id: String(template?.id ?? f.id),
-                    name: template?.name ?? f.name,
-                    laborIntensity: laborHours != null ? String(laborHours) : f.laborIntensity,
-                    duration: durationDays,
-                  }));
-
-                  const norm = Array.isArray(required) 
-                    ? required 
-                        .map(x => (x && typeof x === 'object') ? x : { code: String(x) }) 
-                        .filter(x => x.id != null || x.code || x.name) 
-                    : [];
-                  setMissingReq(norm); 
-                  setFormError(''); 
-                }}
               />
             </div>
 
@@ -397,7 +371,7 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
                 id="duration"
                 type="number"
                 step="0.1"
-                min="0.1"
+                min="0"
                 value={formData.duration}
                 onChange={(e) => handleInputChange('duration', e.target.value)}
                 placeholder="10"
@@ -427,6 +401,18 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
                 onChange={(e) => handleInputChange('numberOfPerformers', e.target.value)}
                 placeholder="2"
               />
+            </div>
+
+             <div className="space-y-2">
+              <Label htmlFor="qualificationId">Квалификация исполнителей</Label>
+              <select id="qualificationId" value={formData.qualificationId} onChange={(e) => {
+                const selectedQualification = qualifications.find(q => String(q.id) === e.target.value);
+                handleInputChange('qualificationId', e.target.value);
+                handleInputChange('efficiencyMultiplier', String(selectedQualification.efficiency_multiplier));
+              }} 
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                {qualifications.map(q => (<option key={q.id} value={q.id}>{q.name} ({q.efficiency_multiplier} эфф.)</option>))}
+              </select>
             </div>
 
             <div className="space-y-2">

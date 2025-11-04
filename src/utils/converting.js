@@ -126,10 +126,9 @@ export function aonToAoa(aonTasks, { hoursPerDay = 6, createSink = true } = {}) 
   const aoaEdges = [];
   const processedTasks = [];
 
-  // Caches and deduplication to reduce dummy edges
   const dummySet = new Set();
-  const mergeCache = new Map(); // key: sorted list of end events -> mergeEvent id
-  const phaseAnchorEvent = new Map(); // key: phase number -> anchorEvent id
+  const mergeCache = new Map(); 
+  const phaseAnchorEvent = new Map(); 
 
   function addDummyEdge(fromEvent, toEvent, name = 'Фиктивная') {
     const id = `${fromEvent}-${toEvent}`;
@@ -212,7 +211,7 @@ export function aonToAoa(aonTasks, { hoursPerDay = 6, createSink = true } = {}) 
       } else if (candidates.length === 1) {
         startEvent = candidates[0];
       } else {
-        // Reuse single anchor per previous phase to avoid duplicated dummies
+
         const prevPhaseIndex = curPhase != null ? (phasesSorted.indexOf(curPhase) - 1) : -1;
         const prevPhase = prevPhaseIndex >= 0 ? phasesSorted[prevPhaseIndex] : null;
         const keyPhase = prevPhase;
@@ -241,7 +240,6 @@ export function aonToAoa(aonTasks, { hoursPerDay = 6, createSink = true } = {}) 
       } else if (uniqEnds.length === 1) {
         startEvent = uniqEnds[0];
       } else {
-        // Reuse merge node for identical predecessor end sets
         const key = uniqEnds.slice().sort((a,b)=>a-b).join(',');
         if (mergeCache.has(key)) {
           startEvent = mergeCache.get(key);
