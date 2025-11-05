@@ -9,7 +9,8 @@ const hideLoading = () => {
   if (loadingElement) {
     loadingElement.style.display = 'none';
   }
-};
+}; 
+
 
 const container = document.getElementById('root');
 const root = createRoot(container);

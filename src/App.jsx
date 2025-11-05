@@ -62,15 +62,14 @@ function App() {
     criticalPath: [],
     projectDuration: 0
   });
-  const [resourceLimit, setResourceLimit] = useState(10);
-  const [lastNumericLimit, setLastNumericLimit] = useState(10); 
-  const maxPerformersPerTask = project.tasks.reduce((max, task) => Math.max(max, task.numberOfPerformers), 0);
-  const isResourceLimitExceeded = maxPerformersPerTask > resourceLimit;
-
-  const [baselinePlan, setBaselinePlan] = useState(null);
-  const [calculationResults, setCalculationResults] = useState(null);
-   const [userOverrides, setUserOverrides] = useState({});
-   const [history, setHistory] = useState([]);
+    const [resourceLimit, setResourceLimit] = useState(10);
+    const [lastNumericLimit, setLastNumericLimit] = useState(10); 
+    const maxPerformersPerTask = project.tasks.reduce((max, task) => Math.max(max, task.numberOfPerformers), 0);
+    const isResourceLimitExceeded = maxPerformersPerTask > resourceLimit;
+    const [baselinePlan, setBaselinePlan] = useState(null);
+    const [calculationResults, setCalculationResults] = useState(null);
+    const [userOverrides, setUserOverrides] = useState({});
+    const [history, setHistory] = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [activeTab, setActiveTab] = useState('input');
