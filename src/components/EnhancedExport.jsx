@@ -206,7 +206,7 @@ const EnhancedExport = ({ results, project, tasks = [], ganttChartRef, networkDi
         <CardContent>
           <Tabs defaultValue="documents" className="w-full">
    
-            <TabsList className="grid w-full grid-cols-3 border-b mb-4">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3 border-b mb-4">
               <TabsTrigger value="documents">Документы</TabsTrigger>
               <TabsTrigger value="tables">Таблицы</TabsTrigger>
               <TabsTrigger value="charts">Графики и диаграммы</TabsTrigger>
