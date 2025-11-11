@@ -400,8 +400,8 @@ useImperativeHandle(ref, () => ({
 
     const baseX = 120;
     const baseY = 150;
-    const levelSpacing = 300;
-    const nodeSpacing = 240;  
+    const levelSpacing = 350;
+    const nodeSpacing = 280;  
 
     levelGroups.forEach((levelNodes, level) => {
       levelNodes.sort((a, b) => a.id - b.id);
@@ -543,7 +543,7 @@ useImperativeHandle(ref, () => ({
     if (!edge.from || !edge.to) return;
 
     const fromX = edge.from.x;
-    const fromY = edge.from.y;
+    const fromY = edge.from.y; 
     const toX = edge.to.x;
     const toY = edge.to.y;
 
