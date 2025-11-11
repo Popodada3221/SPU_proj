@@ -402,7 +402,7 @@ const Calendar = ({ project, results, onProjectUpdate }) => {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
           <TabsTrigger value="calendar">Календарь</TabsTrigger>
           <TabsTrigger value="settings">Настройки</TabsTrigger>
           <TabsTrigger value="holidays">Праздники</TabsTrigger>

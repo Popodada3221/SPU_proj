@@ -1067,7 +1067,7 @@ const handleTaskUpdate = async (taskId, updates) => {
             {project.tasks.length > 0 || calculationResults ? (
               <>
             <Tabs defaultValue="export" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3">
                 <TabsTrigger value="export">Экспорт</TabsTrigger>
                 <TabsTrigger value="themes">Темы</TabsTrigger>
                 <TabsTrigger value="logs">Логи</TabsTrigger>
