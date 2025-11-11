@@ -1,4 +1,3 @@
-// public/db/sqlite-readonly.cjs
 let db;
 
 function openDB(dbPath) {
@@ -61,15 +60,13 @@ function getTemplate(idOrCode) {
 }
 
 /**
- * Вернёт список предшественников (по таблице template_deps).
- * @param {number|string} idOrCode - id или code шаблона, для которого ищем зависимости
+ * @param {number|string} idOrCode 
  * @param {Object} [opts]
- * @param {'all'|'required'} [opts.level='all'] - вернуть все зависимости или только те, у которых required_level = 'required'
+ * @param {'all'|'required'} [opts.level='all'] 
  */
 function getRequiredPredecessors(idOrCode, opts = {}) {
   const level = opts.level || 'all';
 
-  // если передали code — получим id
   let templateId = idOrCode;
   if (typeof idOrCode === 'string' && isNaN(+idOrCode)) {
     const row = db.prepare(`SELECT id FROM work_templates WHERE code = ?`).get(idOrCode);
@@ -134,7 +131,6 @@ function getAllRequiredTemplates() {
 }
 
 function getAllRequiredTemplates() {
-  // сначала — сами обязательные шаблоны в правильном порядке
   const templates = db.prepare(`
     SELECT
       wt.id,
@@ -158,7 +154,6 @@ function getAllRequiredTemplates() {
     ORDER BY wp.id ASC, wn.id ASC, wt.id ASC
   `).all();
 
-  // затем — зависимости по id для каждой работы
   const depsStmt = db.prepare(`
     SELECT pred_template_id
     FROM template_deps
@@ -167,7 +162,6 @@ function getAllRequiredTemplates() {
 
   return templates.map(t => ({
     ...t,
-    // массив числовых id предшественников (как строки, если удобнее — решай в рендерере)
     pred_ids: depsStmt.all(t.id).map(r => r.pred_template_id),
   }));
 }

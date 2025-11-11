@@ -76,7 +76,7 @@ function App() {
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const [appZoom, setAppZoom] = useState(1);
   const [isNetworkFullScreen, setIsNetworkFullScreen] = useState(false);
-  const [networkRenderMode, setNetworkRenderMode] = useState("aoa");
+  const [networkRenderMode, setNetworkRenderMode] = useState("aoa");calculateNetworkParameters
   const networkDiagramRef = useRef(null);
   const ganttChartRef = useRef(null); const userGuideRef = useRef(null);
   const [isExportingWord, setIsExportingWord] = useState(false);
@@ -495,40 +495,31 @@ const handleTaskUpdate = async (taskId, updates) => {
       projectId: project.id
     });
 
-    const source = Array.isArray(project.tasks) ? project.tasks : [];
-    const needsAdapt = source.some(t => !looksLikeEdgeId(String(t.id)));
-    const tasksForCalc = needsAdapt ? aonToAoa(source, { hoursPerDay: 6, createSink: true }) : source;
-    const HOURS_PER_DAY = 6;
-    const normalizedTasks = tasksForCalc.map(t => {
-      const p = Math.max(1, parseInt(t.numberOfPerformers, 10) || 1);
-      const isDummy = t.isDummy === true || Number(t.duration) === 0;
+  const source = Array.isArray(project.tasks) ? project.tasks : [];
+  const needsAdapt = source.some(t => !looksLikeEdgeId(String(t.id)));
+  const tasksForCalc = needsAdapt ? aonToAoa(source, { hoursPerDay: 8, createSink: true }) : source;
 
-      const laborHours = Number.isFinite(+t.laborIntensity) ? +t.laborIntensity : null;
-      let durationDays;
+  const HOURS_PER_DAY = 8;
 
-      if (isDummy) {
-        durationDays = 0;
-      } else if (laborHours != null && laborHours > 0) {
-        durationDays = Math.max(1, Math.ceil(laborHours / (HOURS_PER_DAY * p)));
-      } else {
-        const d = Number.isFinite(+t.duration) ? +t.duration : 0;
-        durationDays = Math.max(1, Math.ceil(d || 1));
-      }
+  const normalizedTasks = tasksForCalc.map(t => {
 
-      const preds = Array.isArray(t.predecessors)
-        ? t.predecessors
-        : (typeof t.predecessors === 'string' && t.predecessors.trim().length
-            ? t.predecessors.split(',').map(s => s.trim()).filter(Boolean)
-            : []);
+    
+    const durationInDays = t.duration / HOURS_PER_DAY;
 
-      return {
-        ...t,
-        isDummy,
-        numberOfPerformers: p,
-        duration: durationDays,
-        predecessors: preds,
-      };
-    });
+    const preds = Array.isArray(t.predecessors)
+      ? t.predecessors
+      : (typeof t.predecessors === 'string' && t.predecessors.trim().length
+          ? t.predecessors.split(',').map(s => s.trim()).filter(Boolean)
+          : []);
+
+    return {
+      ...t, 
+      duration: durationInDays, 
+      predecessors: preds,
+      isDummy: t.isDummy === true || Number(t.duration) === 0,
+      numberOfPerformers: Math.max(1, parseInt(t.numberOfPerformers, 10) || 1),
+    };
+  });
 
     const validation = validateNetwork(normalizedTasks);
     if (!validation.isValid) {

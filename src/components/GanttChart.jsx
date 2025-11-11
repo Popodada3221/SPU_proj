@@ -138,7 +138,6 @@ const handleMouseDown = useCallback((e) => {
   e.preventDefault();
 
 	  const rect = canvas.getBoundingClientRect();
-	  // Координаты на холсте (в "мировых" координатах, до масштабирования)
 	  const x = (e.clientX - rect.left) / scale - scrollOffset.x;
 	  const y = (e.clientY - rect.top) / scale - scrollOffset.y;
 
@@ -167,32 +166,23 @@ const handleMouseDown = useCallback((e) => {
 }, [tasks, scale, scrollOffset]);
 
 const handleMouseMove = useCallback((e) => {
-		  // Логика для перетаскивания задачи
 		  if (draggingTask) {
 		    const canvas = canvasRef.current;
 		    const rect = canvas.getBoundingClientRect();
 		    
-		    // Вычисляем смещение в пикселях относительно начальной точки
 		    const dx = e.clientX - draggingTask.initialX;
-		    
-		    // Корректный расчет смещения в днях с учетом масштаба
-		    // Мы используем scale, потому что DAY_WIDTH * scale - это фактическая ширина дня на экране
 		    const dayDelta = dx / (DAY_WIDTH * scale); 
 		    let newStart = draggingTask.initialStart + dayDelta;
 
-    // Ограничиваем перемещение в пределах резерва времени
     const minStart = draggingTask.task.earlyStart;
     const maxStart = draggingTask.task.lateStart;
     newStart = Math.max(minStart, Math.min(newStart, maxStart));
     
-    // ВАЖНО: Мы сохраняем смещение в ДНЯХ, а не в пикселях
     setDragOffset(newStart - draggingTask.initialStart);
-    return; // Выходим, чтобы не запустить панорамирование
+    return; 
   }
 
-  // Логика для панорамирования (перемещения холста)
   if (isPanning) {
-    // Эта логика должна быть простой и не конфликтовать с перетаскиванием
     setScrollOffset(prev => ({
         x: prev.x + e.movementX,
         y: prev.y + e.movementY
@@ -202,26 +192,19 @@ const handleMouseMove = useCallback((e) => {
 
 const handleMouseUp = useCallback(() => {
   if (draggingTask) {
-    // Округляем до ближайшего целого дня для точности
-	  // Округляем до ближайшего целого дня для точности
+
 	  const finalStartDay = Math.round(draggingTask.initialStart + dragOffset);
 	
-	  // Проверяем, произошло ли фактическое смещение
 	  if (finalStartDay !== draggingTask.task.userDefinedStart) {
-	    // Вызываем onTaskUpdate с финальным, округленным значением
-	    // Это действие должно вызвать пересчет всего проекта в родительском компоненте
-	    // (включая критический путь и таблицы), что соответствует требованию "оптимизации".
 	    onTaskUpdate(draggingTask.task.id, {
 	      userDefinedStart: finalStartDay,
 	    });
 	  }
 
-    // Сбрасываем состояния перетаскивания
     setDraggingTask(null);
     setDragOffset(0);
   }
   
-  // Сбрасываем состояние панорамирования в любом случае
   setIsPanning(false);
   if (canvasRef.current) {
     canvasRef.current.style.cursor = 'grab';
@@ -323,7 +306,6 @@ const handleMouseUp = useCallback(() => {
  
 	  ctx.fillText('Загрузка ресурсов (чел/день)', 15 - scrollOffset.x, ganttAreaHeight + 25 - scrollOffset.y);
 	  
-	  // Заготовка для будущей оси квалификаций
 	  ctx.fillStyle = '#6b7280';
 	  ctx.font = '12px Arial';
 	  ctx.textAlign = 'left';
@@ -385,10 +367,7 @@ ctx.textAlign = 'center';
 ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) / 2, bottomAxisY + 20);
 
 
-	  // --- Линейный график загрузки ресурсов ---
-	  
-	  // 1. Рисуем ломаную линию
-	  ctx.strokeStyle = '#2563eb'; // Синий цвет
+	  ctx.strokeStyle = '#2563eb'; 
 	  ctx.lineWidth = 2;
 	  ctx.beginPath();
 	
@@ -404,8 +383,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	  });
 	  
 	  ctx.stroke();
-	
-	  // 2. Рисуем точки
+
 	  ctx.fillStyle = '#2563eb';
 	  resourceLoadData.forEach(data => {
 	    const x = LABEL_WIDTH + data.day * DAY_WIDTH * scale + (DAY_WIDTH * scale / 2);
@@ -415,11 +393,6 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	    ctx.fill();
 	  });
 	  
-	  // 3. Заготовка под квалификации (пока просто вывод общей нагрузки)
-	  // В будущем здесь можно будет итерироваться по resourceLoadData.loadByQualification
-	  // и рисовать отдельные линии для каждой квалификации.
-	  
-	  // 4. Подпись графика
 	  ctx.fillStyle = '#111827';
 	  ctx.font = 'bold 14px Arial';
 	  ctx.textAlign = 'center';
@@ -521,11 +494,9 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
   const truncatedLabel = truncateText(ctx, taskLabel, maxLabelWidth);
   ctx.fillText(truncatedLabel, 15, taskY + TASK_HEIGHT / 2);
 
-	  // Отображение количества исполнителей, если включен переключатель "Ресурсы"
 	  if (showResources && task.numberOfPerformers) {
 	    ctx.fillStyle = '#6b7280';
 	    ctx.font = '11px sans-serif';
-	    // Используем taskY + TASK_HEIGHT / 2 + 16 для размещения под названием задачи
 	    ctx.fillText(`👥 ${task.numberOfPerformers} исп.`, 15, taskY + TASK_HEIGHT / 2 + 16);
 	  }
 
@@ -538,7 +509,6 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
   const taskWidth = task.duration * DAY_WIDTH * scale;
   
   if (startX < chartWidth + Math.abs(scrollOffset.x) && startX + taskWidth > -Math.abs(scrollOffset.x)) {
-	    // Проверяем, является ли задача критической, только если включен показ критического пути
 	    const isCritical = showCriticalPath && (criticalPath.includes(task.id) || task.isCritical);
     
     if (showTimeReserves && !isCritical && !task.isDummy) {
@@ -583,8 +553,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	  const drawGrid = (ctx, chartWidth, chartHeight) => {
 	  ctx.strokeStyle = GRID_COLOR;
 	  ctx.lineWidth = 1;
-	
-	  // Горизонтальные линии (только для области задач)
+
 	  for (let i = 0; i < tasks.length; i++) {
 	    const y = HEADER_HEIGHT + i * ROW_HEIGHT;
 	    ctx.beginPath();
@@ -592,8 +561,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	    ctx.lineTo(chartWidth, y);
 	    ctx.stroke();
 	  }
-	
-	  // Вертикальные линии (Сквозная сетка до самого низа)
+
 	  const startDay = Math.floor(-scrollOffset.x / (DAY_WIDTH * scale));
 	  const endDay = Math.min(
 	    projectDuration,
@@ -605,7 +573,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	    const x = LABEL_WIDTH + day * DAY_WIDTH * scale;
 	    ctx.beginPath();
 	    ctx.moveTo(x, 0);
-	    ctx.lineTo(x, chartHeight); // Используем chartHeight для сквозной сетки
+	    ctx.lineTo(x, chartHeight);
 	    ctx.stroke();
 	  }
 	};
@@ -991,8 +959,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	          </div>
 	        </CardContent>
 	      </Card>
-	    
-	    {/* Полноэкранный режим */}
+
 	    {isFullScreen && (
 	      <Portal>
 	        <div className="fixed inset-0 z-50 bg-white flex flex-col">
@@ -1016,7 +983,6 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	            </div>
 	          </div>
 		          <div className="flex-grow w-full h-full p-4">
-		            {/* Рендеринг диаграммы Ганта в полноэкранном режиме */}
 		            <div 
 		              ref={containerRef}
 		              className="w-full h-full overflow-hidden border rounded-lg"

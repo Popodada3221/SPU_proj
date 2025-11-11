@@ -98,10 +98,10 @@ export const createTask = (id, name, duration, laborIntensity, numberOfPerformer
     id: id || '',
     name: name || '',
     duration: parseFloat(duration) || 0,
-    laborIntensity: parseFloat(laborIntensity) || parseFloat(duration) * 8 || 0,
+    laborIntensity: parseFloat(laborIntensity) || 0,
     numberOfPerformers: parseInt(numberOfPerformers) || 1,
     predecessors: Array.isArray(predecessors) ? predecessors : [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   };
 };
 

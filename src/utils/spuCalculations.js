@@ -1,319 +1,236 @@
 export class SPUTask {
-  constructor(name, duration, from, to, laborIntensity = 0, numberOfPerformers = 1) {
+  constructor(name, duration, from, to, laborIntensity = 0, numberOfPerformers = 1, qualificationId = null, efficiencyMultiplier = 1.0) {
     this.name = name;
-    this.duration = parseFloat(duration);
-    this.from = from;
-    this.to = to;
-    this.laborIntensity = parseFloat(laborIntensity) || this.duration * 8;
-    this.numberOfPerformers = parseInt(numberOfPerformers) || 1;
-    this.ES = 0;
-    this.EF = 0;
-    this.LS = 0;
-    this.LF = 0;
-    this._totalFloat = 0;
-    this._freeFloat = 0;
+    this.duration = Number(duration) || 0; 
+    this.from = String(from);
+    this.to = String(to);
+
+    if (this.duration === 0) {
+      this.laborIntensity = 0;
+      this.numberOfPerformers = 0;
+    } else {
+      this.laborIntensity = parseFloat(laborIntensity) || this.duration;
+      this.numberOfPerformers = parseInt(numberOfPerformers) || 1;
+    }
+    
+    this.qualificationId = qualificationId;
+    this.efficiencyMultiplier = parseFloat(efficiencyMultiplier) || 1.0;
+    
+    this.ES = 0; 
+    this.EF = 0; 
+    this.LS = 0; 
+    this.LF = 0; 
+    
+    this._totalFloat = 0; 
+    this._freeFloat = 0;  
   }
 
-  get id() {
-    return `${this.from}-${this.to}`;
-  }
-
-  get totalFloat() {
-    return this._totalFloat;
-  }
-
-  set totalFloat(value) {
-    this._totalFloat = value;
-  }
-
-  get freeFloat() {
-    return this._freeFloat;
-  }
-
-  set freeFloat(value) {
-    this._freeFloat = value;
-  }
-
-  get isCritical() {
-    return Math.abs(this.totalFloat) < 0.001;
-  }
-
-  get predecessors() {
-    return [];
-  }
+  get id() { return `${this.from}-${this.to}`; }
+  get totalFloat() { return this._totalFloat; }
+  set totalFloat(value) { this._totalFloat = value; }
+  get freeFloat() { return this._freeFloat; }
+  set freeFloat(value) { this._freeFloat = value; }
+  get isCritical() { return Math.abs(this.totalFloat) < 0.001; }
 }
 
 export class SPUCalculation {
   constructor(tasks) {
-    this.tasks = tasks.map(task => {
-      if (task instanceof SPUTask) {
-        return task;
+    this.tasks = tasks;
+  }
+
+  calculateNetworkTimes(overrides = {}) {
+    const allNodes = [...new Set(this.tasks.flatMap(t => [t.from, t.to]))];
+    const incoming = new Map(allNodes.map(n => [n, []]));
+    const outgoing = new Map(allNodes.map(n => [n, []]));
+    
+    this.tasks.forEach(task => {
+      if (task.from && task.to) {
+        outgoing.get(task.from)?.push(task);
+        incoming.get(task.to)?.push(task);
       }
-      const [from, to] = task.id.split("-");
-      return new SPUTask(
-        task.name || task.id,
-        task.duration,
-        from,
-        to,
-        task.laborIntensity,
-        task.numberOfPerformers
-      );
-    });
-  }
-
-  calculateEarlyStartAndFinish(overrides = {}) {
-    const fromTo = [...new Set(this.tasks.flatMap(t => [t.from, t.to]))];
-    const incoming = {};
-    const outgoing = {};
-
-    fromTo.forEach(node => {
-      incoming[node] = [];
-      outgoing[node] = [];
     });
 
-    this.tasks.forEach(task => {
-      incoming[task.to].push(task);
-      outgoing[task.from].push(task);
-    });
+    const sortedNodes = this.topologicalSort(allNodes, outgoing);
+    
+    const earlyEventTime = new Map(allNodes.map(n => [n, 0]));
 
-    const sortedNodes = this.sortNodes(fromTo, outgoing);
-    const earlyEventTime = {};
-    fromTo.forEach(node => {
-      earlyEventTime[node] = 0;
-    });
-
-    sortedNodes.forEach(node => {
-      outgoing[node].forEach(task => {
+    for (const node of sortedNodes) {
+      const earlyTime = earlyEventTime.get(node) || 0;
+      for (const task of (outgoing.get(node) || [])) {
         const override = overrides[task.id];
-        if (override && override.userDefinedStart !== undefined) {
-          task.ES = override.userDefinedStart;
-        } else {
-          task.ES = earlyEventTime[node];
-        }
+        task.ES = (override && override.userDefinedStart !== undefined) ? override.userDefinedStart : earlyTime;
         task.EF = task.ES + task.duration;
-        earlyEventTime[task.to] = Math.max(earlyEventTime[task.to] || 0, task.EF);
-      });
-    });
+        earlyEventTime.set(task.to, Math.max(earlyEventTime.get(task.to) || 0, task.EF));
+      }
+    }
 
-    const lateEventTime = {};
-    const projectDuration = Math.max(...Object.values(earlyEventTime));
+    const projectDuration = Math.max(0, ...Array.from(earlyEventTime.values()));
 
-    fromTo.forEach(node => {
-      lateEventTime[node] = projectDuration;
-    });
-
-    const reversedNodes = [...sortedNodes].reverse();
-
-    reversedNodes.forEach(node => {
-      incoming[node].forEach(task => {
-        task.LF = lateEventTime[node];
+    const lateEventTime = new Map(allNodes.map(n => [n, projectDuration]));
+    
+    for (let i = sortedNodes.length - 1; i >= 0; i--) {
+      const node = sortedNodes[i];
+      for (const task of (incoming.get(node) || [])) {
+        task.LF = lateEventTime.get(node);
         task.LS = task.LF - task.duration;
-        lateEventTime[task.from] = Math.min(lateEventTime[task.from], task.LS);
-      });
-    });
+        lateEventTime.set(task.from, Math.min(lateEventTime.get(task.from) ?? Infinity, task.LS));
+      }
+    }
 
     this.tasks.forEach(task => {
-      task.totalFloat = task.LS - task.ES;
-      task.freeFloat = earlyEventTime[task.to] - task.EF;
+      task.totalFloat = (lateEventTime.get(task.to) ?? projectDuration) - (earlyEventTime.get(task.from) ?? 0) - task.duration;
+      task.freeFloat = (earlyEventTime.get(task.to) || 0) - task.EF;
     });
 
-    return {
-      tasks: this.tasks,
-      projectDuration: projectDuration,
-      criticalPath: this.findCriticalPath(),
-      nodes: fromTo,
-      earlyEventTime,
-      lateEventTime
-    };
+    return { tasks: this.tasks, projectDuration, criticalPath: this.findCriticalPath(this.tasks, earlyEventTime, lateEventTime), nodes: allNodes, earlyEventTime, lateEventTime };
   }
 
-  sortNodes(nodes, outgoing) {
+  topologicalSort(nodes, outgoing) {
     const sorted = [];
     const visited = new Set();
     const visiting = new Set();
 
     const visit = (node) => {
-      if (visiting.has(node)) {
-        throw new Error(`Обнаружен цикл в сетевом графике в узле: ${node}`);
-      }
-      if (visited.has(node)) {
-        return;
-      }
+      if (!node) return;
+      if (visiting.has(node)) throw new Error(`Обнаружен цикл в сетевом графике, затрагивающий узел: ${node}`);
+      if (visited.has(node)) return;
+      
       visiting.add(node);
-      (outgoing[node] || []).forEach(task => {
-        visit(task.to);
-      });
+      (outgoing.get(node) || []).forEach(task => visit(task.to));
       visiting.delete(node);
+      
       visited.add(node);
       sorted.push(node);
     };
 
-    const startNodes = nodes.filter(node => !this.tasks.some(t => t.to === node));
-    startNodes.forEach(node => {
-        if (!visited.has(node)) {
-            visit(node);
-        }
-    });
-    
-    nodes.forEach(node => {
-        if (!visited.has(node)) {
-            visit(node);
-        }
-    });
+    const startNodes = nodes.filter(node => !this.tasks.some(t => String(t.to) === String(node)));
+    startNodes.forEach(visit);
+    nodes.forEach(node => { if (!visited.has(node)) visit(node); });
 
     return sorted.reverse();
   }
 
-  findCriticalPath() {
-    const criticalTasks = this.tasks.filter(task => task.isCritical);
+  findCriticalPath(tasks) {
+    const criticalTasks = tasks.filter(task => task.isCritical);
     if (criticalTasks.length === 0) return [];
 
-    const path = [];
     const taskMap = new Map();
     criticalTasks.forEach(task => {
-      if (!taskMap.has(task.from)) {
-        taskMap.set(task.from, []);
-      }
-      taskMap.get(task.from).push(task);
+        if (!taskMap.has(task.from)) {
+            taskMap.set(task.from, []);
+        }
+        taskMap.get(task.from).push(task);
     });
 
-    const allToNodes = new Set(criticalTasks.map(t => t.to));
-    const startNodes = criticalTasks.map(t => t.from).filter(from => !allToNodes.has(from));
-    if (startNodes.length === 0 && criticalTasks.length > 0) {
-        const allFromNodes = new Set(criticalTasks.map(t => t.from));
-        const firstNode = criticalTasks.map(t => t.from).find(from => !allToNodes.has(from)) || criticalTasks[0].from;
-        startNodes.push(firstNode);
-    }
+    const startNodes = criticalTasks
+        .map(t => t.from)
+        .filter(from => !criticalTasks.some(t => t.to === from));
     
-    let currentNode = startNodes[0];
-    if(!currentNode) return [];
-    
-    path.push(currentNode);
 
-    while (taskMap.has(currentNode)) {
-      const nextTasks = taskMap.get(currentNode);
-      if (nextTasks.length === 0) break;
-      const nextTask = nextTasks[0];
-      path.push(nextTask.to);
-      currentNode = nextTask.to;
+    const uniqueStartNodes = [...new Set(startNodes)];
+    if (uniqueStartNodes.length === 0 && criticalTasks.length > 0) {
+        const earliestTask = criticalTasks.sort((a, b) => a.ES - b.ES)[0];
+        uniqueStartNodes.push(earliestTask.from);
     }
-    return path;
-  }
+    const findLongestPath = (node, visited = new Set()) => {
+        if (visited.has(node)) return []; 
+        visited.add(node);
+
+        const nextTasks = taskMap.get(node) || [];
+        if (nextTasks.length === 0) return [node]; 
+
+        let longestPath = [];
+        for (const task of nextTasks) {
+            const path = [node, ...findLongestPath(task.to, new Set(visited))];
+            if (path.length > longestPath.length) {
+                longestPath = path;
+            }
+        }
+        return longestPath;
+    };
+
+    let finalPath = [];
+    for (const startNode of uniqueStartNodes) {
+        const path = findLongestPath(startNode);
+        if (path.length > finalPath.length) {
+            finalPath = path;
+        }
+    }
+
+    return finalPath;
+}
+
 
   static calculateNetworkParameters(tasks, overrides = {}) {
-    try {
-      const spuTasks = tasks.map(task => {
-        const [from, to] = task.id.split("-");
-        return new SPUTask(
-          task.name,
-          task.duration,
-          from,
-          to,
-          task.laborIntensity,
-          task.numberOfPerformers
-        );
+     try {
+      const spuTasks = tasks.map(t => {
+        const [from, to] = t.id.split('-');
+        return new SPUTask(t.name, t.duration, from, to, t.laborIntensity, t.numberOfPerformers, t.qualificationId, t.efficiencyMultiplier);
       });
 
       const calculation = new SPUCalculation(spuTasks);
-      const result = calculation.calculateEarlyStartAndFinish(overrides);
+      const result = calculation.calculateNetworkTimes(overrides);
 
-      const calculatedTasks = result.tasks.map(spuTask => ({
-        id: spuTask.id,
-        name: spuTask.name,
-        duration: spuTask.duration,
-        laborIntensity: spuTask.laborIntensity,
-        numberOfPerformers: spuTask.numberOfPerformers,
-        predecessors: tasks.find(t => t.id === spuTask.id)?.predecessors || [],
-        isDummy: Boolean(tasks.find(t => t.id === spuTask.id)?.isDummy),
-        sourceTaskId: tasks.find(t => t.id === spuTask.id)?.sourceTaskId,
-        earlyStart: spuTask.ES,
-        earlyFinish: spuTask.EF,
-        lateStart: spuTask.LS,
-        lateFinish: spuTask.LF,
-        totalFloat: spuTask.totalFloat,
-        freeFloat: spuTask.freeFloat,
-        isCritical: spuTask.isCritical,
-        earlyEventTimeI: result.earlyEventTime[spuTask.from],
-        earlyEventTimeJ: result.earlyEventTime[spuTask.to],
-        lateEventTimeI: result.lateEventTime[spuTask.from],
-        lateEventTimeJ: result.lateEventTime[spuTask.to]
-      }));
+      const calculatedTasks = result.tasks.map(spuTask => {
+        const earlyEventTimeI = result.earlyEventTime.get(spuTask.from) ?? 0;
+        const lateEventTimeI = result.lateEventTime.get(spuTask.from) ?? 0;
+        const earlyEventTimeJ = result.earlyEventTime.get(spuTask.to) ?? 0;
+        const lateEventTimeJ = result.lateEventTime.get(spuTask.to) ?? 0;
+        const HOURS_PER_DAY=8;
+        return {
+          id: spuTask.id,
+          name: spuTask.name,
+          laborIntensity: spuTask.laborIntensity, 
+          numberOfPerformers: spuTask.numberOfPerformers, 
+          isCritical: spuTask.isCritical, 
+          duration: spuTask.duration * HOURS_PER_DAY,
+          earlyEventTimeI: earlyEventTimeI * HOURS_PER_DAY,
+          earlyFinish: spuTask.EF * HOURS_PER_DAY,
+          earlyEventTimeJ: earlyEventTimeJ * HOURS_PER_DAY,
+          lateEventTimeI: lateEventTimeI * HOURS_PER_DAY,
+          lateStart: spuTask.LS * HOURS_PER_DAY,
+          lateFinish: spuTask.LF * HOURS_PER_DAY,
+          eventFloatJ: (lateEventTimeJ - earlyEventTimeJ) * HOURS_PER_DAY,
+          freeFloat: spuTask.freeFloat * HOURS_PER_DAY,
+          totalFloat: spuTask.totalFloat * HOURS_PER_DAY,
+        };
+      });
 
-      return {
-        tasks: calculatedTasks,
-        projectDuration: result.projectDuration,
-        criticalPath: result.criticalPath,
-        isValid: true,
-        errors: []
-      };
+      return { tasks: calculatedTasks, projectDuration: result.projectDuration, criticalPath: result.criticalPath, isValid: true, errors: [] };
     } catch (error) {
-      return {
-        tasks: [],
-        projectDuration: 0,
-        criticalPath: [],
-        isValid: false,
-        errors: [error.message]
-      };
+      return { tasks: [], projectDuration: 0, criticalPath: [], isValid: false, errors: [error.message] };
     }
   }
 
   static validateNetwork(tasks) {
     const errors = [];
     if (!Array.isArray(tasks) || tasks.length === 0) {
-      errors.push("Список задач пуст");
-      return { isValid: false, errors };
+      return { isValid: false, errors: ["Список задач пуст"] };
     }
 
     const taskIds = new Set();
     tasks.forEach(task => {
       if (!task.id || typeof task.id !== 'string' || !/^\d+-\d+$/.test(task.id.trim())) {
         errors.push(`Некорректный ID задачи: ${task.id}`);
-      } else {
-        if (taskIds.has(task.id.trim())) {
-          errors.push(`Дублирующийся ID задачи: ${task.id}`);
-        }
-        taskIds.add(task.id.trim());
+      } else if (taskIds.has(task.id.trim())) {
+        errors.push(`Дублирующаяся ID задачи: ${task.id}`);
       }
-
-      if (!task.name || String(task.name).trim() === "") {
-        errors.push(`Отсутствует название для задачи: ${task.id}`);
-      }
-      const dur = Number(task.duration);
-      if (isNaN(dur) || dur < 0) {
-        errors.push(`Некорректная продолжительность для задачи: ${task.id}`);
-      }
-      const perf = parseInt(task.numberOfPerformers, 10);
-      if (isNaN(perf) || perf <= 0) {
-        errors.push(`Некорректное количество исполнителей для задачи: ${task.id}`);
-      }
+      taskIds.add(task.id.trim());
     });
 
-    if (errors.length > 0) {
-        return { isValid: false, errors };
-    }
+    if (errors.length > 0) return { isValid: false, errors };
 
     try {
-      const spuTasks = tasks.map(task => {
-        const [from, to] = String(task.id).split("-");
-        return new SPUTask(
-          task.name,
-          Number(task.duration),
-          from,
-          to,
-          task.laborIntensity,
-          task.numberOfPerformers
-        );
+      const spuTasksForValidation = tasks.map(t => {
+        const [from, to] = t.id.split('-');
+        return new SPUTask(t.name, t.duration, from, to);
       });
-      const calculation = new SPUCalculation(spuTasks);
-      calculation.calculateEarlyStartAndFinish();
+      new SPUCalculation(spuTasksForValidation).calculateNetworkTimes();
     } catch (error) {
       errors.push(error.message);
     }
 
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
+    return { isValid: errors.length === 0, errors };
   }
 }
 
