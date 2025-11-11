@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, Edit } from 'lucide-react';
 import { createTask } from '../types/index.js';
 import TaskNameSuggest from './TaskNameSuggest';
+import { HOURS_PER_DAY } from '../utils/spuCalculations.js';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +29,6 @@ const staticQualifications = [
   { id: 4, name: 'Эксперт', efficiency_multiplier: 1.5 },
 ];
 
-const HOURS_PER_DAY=8;
 
 
 

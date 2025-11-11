@@ -1,4 +1,7 @@
+
+
 export class SPUTask {
+
   constructor(name, duration, from, to, laborIntensity = 0, numberOfPerformers = 1, qualificationId = null, efficiencyMultiplier = 1.0) {
     this.name = name;
     this.duration = Number(duration) || 0; 
@@ -176,7 +179,7 @@ export class SPUCalculation {
       const lateEventTimeI = result.lateEventTime.get(spuTask.from) ?? 0;
       const earlyEventTimeJ = result.earlyEventTime.get(spuTask.to) ?? 0;
       const lateEventTimeJ = result.lateEventTime.get(spuTask.to) ?? 0;
-      const HOURS_PER_DAY = 8;
+  
 
       return {
         id: spuTask.id,
@@ -196,8 +199,9 @@ export class SPUCalculation {
         earlyFinish: spuTask.EF * HOURS_PER_DAY,
         earlyEventTimeJ: earlyEventTimeJ * HOURS_PER_DAY,
         lateEventTimeI: lateEventTimeI * HOURS_PER_DAY,
-        lateStartHours: spuTask.LS * HOURS_PER_DAY, 
-        lateFinish: spuTask.LF * HOURS_PER_DAY,
+        lateStartHours: spuTask.LS*HOURS_PER_DAY, 
+        lateFinishHours: spuTask.LF * HOURS_PER_DAY,
+        lateFinish: spuTask.LF,
         eventFloatJ: (lateEventTimeJ - earlyEventTimeJ) * HOURS_PER_DAY,
         freeFloatHours: spuTask.freeFloat * HOURS_PER_DAY, 
         totalFloatHours: spuTask.totalFloat * HOURS_PER_DAY, 
@@ -244,3 +248,4 @@ export class SPUCalculation {
 
 export const calculateNetworkParameters = SPUCalculation.calculateNetworkParameters;
 export const validateNetwork = SPUCalculation.validateNetwork;
+export const HOURS_PER_DAY =8;

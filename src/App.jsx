@@ -634,7 +634,7 @@ const handleTaskUpdate = async (taskId, updates) => {
         const preds = req.map(p => String(p.id));
 
         const hours = Math.ceil((tpl.base_duration_minutes || 0) / 60);
-        const days  = Math.max(1, Math.ceil((tpl.base_duration_minutes || 0) / 1440));
+        const days  = Math.max(0, Math.ceil((tpl.base_duration_minutes || 0) / 480));
 
         tasks.push({
           id: String(tpl.id),

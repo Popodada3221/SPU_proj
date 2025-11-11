@@ -5,6 +5,7 @@ import { calculateDailyLoad } from '../utils/resourceCalculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { HOURS_PER_DAY } from '../utils/spuCalculations.js';
 import {
   BarChart3,
   BarChart2,
@@ -175,7 +176,10 @@ const handleMouseMove = useCallback((e) => {
 		    let newStart = draggingTask.initialStart + dayDelta;
 
     const minStart = draggingTask.task.earlyStart;
-    const maxStart = draggingTask.task.lateStart;
+    const maxStart = draggingTask.task.lateStart/HOURS_PER_DAY;
+    console.log (minStart);
+    console.log (maxStart);
+    
     newStart = Math.max(minStart, Math.min(newStart, maxStart));
     
     setDragOffset(newStart - draggingTask.initialStart);
