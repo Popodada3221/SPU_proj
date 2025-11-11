@@ -187,9 +187,9 @@ export class SPUCalculation {
 
         duration: spuTask.duration,
         earlyStart: spuTask.ES, 
-        lateStart: spuTask.LS, 
-        totalFloat: spuTask.totalFloat,
-        freeFloat: spuTask.freeFloat,
+        lateStart: spuTask.LS*HOURS_PER_DAY, 
+        totalFloat: spuTask.totalFloat*HOURS_PER_DAY,
+        freeFloat: spuTask.freeFloat*HOURS_PER_DAY,
 
         durationHours: spuTask.duration * HOURS_PER_DAY,
         earlyEventTimeI: earlyEventTimeI * HOURS_PER_DAY,
