@@ -615,8 +615,7 @@ useImperativeHandle(ref, () => ({
 
       const padding = 8;
       const lineHeight = 14; 
-      // высота и длина прямоугольника с текстом
-      // TODO: посмотреть радиус круга, для смещения текста
+
       const bgHeight = lineHeight * 2 + padding * 2;
       const bgWidth = maxWidth + padding * 2;
 

@@ -74,7 +74,7 @@ const CalculationResults = ({ results, project }) => {
         const row = [
           `"=""${task.id}"""`,
           `"${task.name}"`,
-          formatNumberForCSV(task.duration),
+          formatNumberForCSV(task.durationHours),
           formatNumberForCSV(task.laborIntensity),
           task.numberOfPerformers,
           formatNumberForCSV(task.earlyEventTimeI),
@@ -292,7 +292,7 @@ const CalculationResults = ({ results, project }) => {
                        <tr key={task.id} className={`${rowClass} hover:bg-blue-50`}>
                         <td style={{ width: '100px' }} className="border border-gray-300 px-3 py-2 font-medium">{task.id}</td>
                         <td style={{ minWidth: '200px', wordBreak: 'break-word' }} className="border border-gray-300 px-3 py-2">{task.name}</td>
-                        {renderCell(task.duration, { width: '130px' })}
+                        {renderCell(task.durationHours, { width: '130px' })}
                         {renderCell(task.laborIntensity, { width: '130px' })}
                         {renderCell(task.numberOfPerformers, { width: '120px' })}
                         {renderCell(task.earlyEventTimeI, { width: '120px' })}

@@ -172,31 +172,39 @@ export class SPUCalculation {
       const result = calculation.calculateNetworkTimes(overrides);
 
       const calculatedTasks = result.tasks.map(spuTask => {
-        const earlyEventTimeI = result.earlyEventTime.get(spuTask.from) ?? 0;
-        const lateEventTimeI = result.lateEventTime.get(spuTask.from) ?? 0;
-        const earlyEventTimeJ = result.earlyEventTime.get(spuTask.to) ?? 0;
-        const lateEventTimeJ = result.lateEventTime.get(spuTask.to) ?? 0;
-        const HOURS_PER_DAY=8;
-        return {
-          id: spuTask.id,
-          name: spuTask.name,
-          laborIntensity: spuTask.laborIntensity, 
-          numberOfPerformers: spuTask.numberOfPerformers, 
-          isCritical: spuTask.isCritical, 
-          duration: spuTask.duration * HOURS_PER_DAY,
-          earlyEventTimeI: earlyEventTimeI * HOURS_PER_DAY,
-          earlyFinish: spuTask.EF * HOURS_PER_DAY,
-          earlyEventTimeJ: earlyEventTimeJ * HOURS_PER_DAY,
-          lateEventTimeI: lateEventTimeI * HOURS_PER_DAY,
-          lateStart: spuTask.LS * HOURS_PER_DAY,
-          lateFinish: spuTask.LF * HOURS_PER_DAY,
-          eventFloatJ: (lateEventTimeJ - earlyEventTimeJ) * HOURS_PER_DAY,
-          freeFloat: spuTask.freeFloat * HOURS_PER_DAY,
-          totalFloat: spuTask.totalFloat * HOURS_PER_DAY,
-        };
-      });
+      const earlyEventTimeI = result.earlyEventTime.get(spuTask.from) ?? 0;
+      const lateEventTimeI = result.lateEventTime.get(spuTask.from) ?? 0;
+      const earlyEventTimeJ = result.earlyEventTime.get(spuTask.to) ?? 0;
+      const lateEventTimeJ = result.lateEventTime.get(spuTask.to) ?? 0;
+      const HOURS_PER_DAY = 8;
 
-      return { tasks: calculatedTasks, projectDuration: result.projectDuration, criticalPath: result.criticalPath, isValid: true, errors: [] };
+      return {
+        id: spuTask.id,
+        name: spuTask.name,
+        laborIntensity: spuTask.laborIntensity, 
+        numberOfPerformers: spuTask.numberOfPerformers, 
+        isCritical: spuTask.isCritical, 
+
+        duration: spuTask.duration,
+        earlyStart: spuTask.ES, 
+        lateStart: spuTask.LS, 
+        totalFloat: spuTask.totalFloat,
+        freeFloat: spuTask.freeFloat,
+
+        durationHours: spuTask.duration * HOURS_PER_DAY,
+        earlyEventTimeI: earlyEventTimeI * HOURS_PER_DAY,
+        earlyFinish: spuTask.EF * HOURS_PER_DAY,
+        earlyEventTimeJ: earlyEventTimeJ * HOURS_PER_DAY,
+        lateEventTimeI: lateEventTimeI * HOURS_PER_DAY,
+        lateStartHours: spuTask.LS * HOURS_PER_DAY, 
+        lateFinish: spuTask.LF * HOURS_PER_DAY,
+        eventFloatJ: (lateEventTimeJ - earlyEventTimeJ) * HOURS_PER_DAY,
+        freeFloatHours: spuTask.freeFloat * HOURS_PER_DAY, 
+        totalFloatHours: spuTask.totalFloat * HOURS_PER_DAY, 
+      };
+    });
+
+    return { tasks: calculatedTasks, projectDuration: result.projectDuration, criticalPath: result.criticalPath, isValid: true, errors: [] };
     } catch (error) {
       return { tasks: [], projectDuration: 0, criticalPath: [], isValid: false, errors: [error.message] };
     }

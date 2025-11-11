@@ -200,7 +200,7 @@ const TaskInput = ({ tasks, onTasksChange, resourceLimit, onResourceLimitChange,
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
-                     <div>Продолжительность: {Number((task.duration / HOURS_PER_DAY).toFixed(2))} дн. ({Number(task.duration.toFixed(2))} ч.)</div>
+                     <div>Продолжительность: {Number(task.duration.toFixed(2))} дн. ({Number(task.duration* HOURS_PER_DAY.toFixed(2))} ч.)</div>
                       <div>Трудоемкость: {task.laborIntensity} н-ч</div>
                       <div>Исполнители: {task.numberOfPerformers} чел. ({qualifications.find(q => q.id === task.qualificationId)?.name || 'Не указана'})</div>
                       <div>Предшественники: {task.predecessors.length > 0 ? task.predecessors.join(', ') : 'нет'}</div>

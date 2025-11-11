@@ -499,12 +499,12 @@ const handleTaskUpdate = async (taskId, updates) => {
   const needsAdapt = source.some(t => !looksLikeEdgeId(String(t.id)));
   const tasksForCalc = needsAdapt ? aonToAoa(source, { hoursPerDay: 8, createSink: true }) : source;
 
-  const HOURS_PER_DAY = 8;
+
 
   const normalizedTasks = tasksForCalc.map(t => {
 
     
-    const durationInDays = t.duration / HOURS_PER_DAY;
+    const durationInDays = parseFloat(t.duration) || 0;
 
     const preds = Array.isArray(t.predecessors)
       ? t.predecessors
