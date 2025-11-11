@@ -82,7 +82,7 @@ const CalculationResults = ({ results, project }) => {
           formatNumberForCSV(task.earlyEventTimeJ),
           formatNumberForCSV(task.lateEventTimeI),
           formatNumberForCSV(task.lateStart),
-          formatNumberForCSV(task.lateFinish),
+          formatNumberForCSV(task.lateFinishHours),
           formatNumberForCSV(task.eventFloatJ),
           formatNumberForCSV(task.freeFloat),
           formatNumberForCSV(task.totalFloat),
@@ -300,7 +300,7 @@ const CalculationResults = ({ results, project }) => {
                         {renderCell(task.earlyEventTimeJ, { width: '120px' })}
                         {renderCell(task.lateEventTimeI, { width: '120px' })}
                         {renderCell(task.lateStart, { width: '120px' })}
-                        {renderCell(task.lateFinish, { width: '120px' })}
+                        {renderCell(task.lateFinishHours, { width: '120px' })}
                         {renderCell(task.eventFloatJ, { width: '120px' })}
                         {renderCell(task.freeFloat, { width: '120px' })}
                         {renderCell(task.totalFloat, { width: '120px' })}

@@ -435,6 +435,7 @@ useImperativeHandle(ref, () => ({
   };
 
   const optimizeNodePositions = (nodes, tasks, levelGroups) => {
+  for (let i = 0; i < 3; i++) { 
     levelGroups.forEach((levelNodes, level) => {
       if (levelNodes.length <= 1) return;
       
@@ -455,19 +456,20 @@ useImperativeHandle(ref, () => ({
         
         if (connectedNodes.length > 0) {
           const avgY = connectedNodes.reduce((sum, n) => sum + n.y, 0) / connectedNodes.length;
-          node.y = (node.y + avgY) / 2;
+          node.y = (node.y * 0.7) + (avgY * 0.3); 
         }
       });
-      
+
       levelNodes.sort((a, b) => a.y - b.y);
-      for (let i = 1; i < levelNodes.length; i++) {
-        const minDistance = 120; 
-        if (levelNodes[i].y - levelNodes[i-1].y < minDistance) {
-          levelNodes[i].y = levelNodes[i-1].y + minDistance;
+      for (let j = 1; j < levelNodes.length; j++) {
+        const minDistance = 140; 
+        if (levelNodes[j].y - levelNodes[j-1].y < minDistance) {
+          levelNodes[j].y = levelNodes[j-1].y + minDistance;
         }
       }
     });
-  };
+  }
+};
 
   const createEdges = (tasks, nodes) => {
     return tasks.map(task => {
@@ -543,7 +545,7 @@ useImperativeHandle(ref, () => ({
     if (!edge.from || !edge.to) return;
 
     const fromX = edge.from.x;
-    const fromY = edge.from.y; 
+    const fromY = edge.from.y;
     const toX = edge.to.x;
     const toY = edge.to.y;
 
