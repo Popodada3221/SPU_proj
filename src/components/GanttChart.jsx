@@ -183,6 +183,7 @@ const handleMouseMove = useCallback((e) => {
     newStart = Math.max(minStart, Math.min(newStart, maxStart));
     
     setDragOffset(newStart - draggingTask.initialStart);
+    onTaskUpdate(draggingTask.task.id, {userDefinedStart: newStart});
     return; 
   }
 
@@ -197,7 +198,7 @@ const handleMouseMove = useCallback((e) => {
 const handleMouseUp = useCallback(() => {
   if (draggingTask) {
 
-	  const finalStartDay = Math.round(draggingTask.initialStart + dragOffset);
+	  const finalStartDay = draggingTask.initialStart + dragOffset;
 	
 	  if (finalStartDay !== draggingTask.task.userDefinedStart) {
 	    onTaskUpdate(draggingTask.task.id, {
@@ -308,14 +309,13 @@ const handleMouseUp = useCallback(() => {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
  
-	  ctx.fillText('Загрузка ресурсов (чел/день)', 15 - scrollOffset.x, ganttAreaHeight + 25 - scrollOffset.y);
+	
 	  
 	  ctx.fillStyle = '#6b7280';
 	  ctx.font = '12px Arial';
 	  ctx.textAlign = 'left';
 	  ctx.textBaseline = 'middle';
-	  ctx.fillText('Квалификации:', 15 - scrollOffset.x, resourceAreaY - 40);
-	  ctx.fillText('Всего (текущая)', 15 - scrollOffset.x, resourceAreaY - 25);
+	
 
   const maxLoad = Math.max(...resourceLoadData.map(d => d.load), 0);
   const yAxisMax = Math.ceil(maxLoad / 5) * 5 || 5;
@@ -441,7 +441,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
     const dayWidth = DAY_WIDTH * scale;
 
   
-    for (let day = 0; day <= projectDuration; day++) {
+    for (let day = 0; day <= projectDuration+1; day++) {
       const x = startX + day * dayWidth;
       
       if (x > chartWidth + Math.abs(scrollOffset.x)) break;
@@ -480,12 +480,43 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
     ctx.lineTo(LABEL_WIDTH, timeScaleHeight);
     ctx.stroke();
   };
+   const drawGrid = (ctx, chartWidth, chartHeight) => {
+   const startDay = Math.floor(-scrollOffset.x / (DAY_WIDTH * scale));
+   const endDay = Math.min(
+    projectDuration,
+    startDay + Math.ceil((containerRef.current?.offsetWidth || chartWidth) / (DAY_WIDTH * scale)) + 2
+  );
+  
+  for (let day = startDay; day <= endDay+1; day++) {
+    if (day < 0) continue;
+    const x = LABEL_WIDTH + day * DAY_WIDTH * scale;
+    
+    const isMajorTick = day % 5 === 0;
+    ctx.strokeStyle = isMajorTick ? '#e2e8f0' : '#f1f5f9';
+    ctx.lineWidth = isMajorTick ? 1 : 0.8;
+
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, chartHeight);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = GRID_COLOR;
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < tasks.length; i++) {
+    const y = HEADER_HEIGHT + i * ROW_HEIGHT;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(chartWidth, y);
+    ctx.stroke();
+  }
+};
 
  const drawTask = (ctx, task, index, chartWidth) => {
   const y = HEADER_HEIGHT + index * ROW_HEIGHT;
   const taskY = y + TASK_MARGIN;
 
-  ctx.fillStyle = index % 2 === 0 ? '#ffffff' : '#fafbfc';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5 )';
   ctx.fillRect(-scrollOffset.x, y, chartWidth + Math.abs(scrollOffset.x), ROW_HEIGHT);
 
   ctx.fillStyle = '#1f2937';
@@ -518,7 +549,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
     if (showTimeReserves && !isCritical && !task.isDummy) {
       const reserveX = LABEL_WIDTH + task.earlyStart * DAY_WIDTH * scale;
       const reserveWidth = (task.lateFinish - task.earlyStart) * DAY_WIDTH * scale;
-      ctx.fillStyle = 'rgba(224, 242, 254, 0.7)';
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.55)';
       ctx.fillRect(reserveX, y, reserveWidth, ROW_HEIGHT);
     }
     
@@ -554,33 +585,8 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
   ctx.stroke();
 };
 
-	  const drawGrid = (ctx, chartWidth, chartHeight) => {
-	  ctx.strokeStyle = GRID_COLOR;
-	  ctx.lineWidth = 1;
+	 
 
-	  for (let i = 0; i < tasks.length; i++) {
-	    const y = HEADER_HEIGHT + i * ROW_HEIGHT;
-	    ctx.beginPath();
-	    ctx.moveTo(0, y);
-	    ctx.lineTo(chartWidth, y);
-	    ctx.stroke();
-	  }
-
-	  const startDay = Math.floor(-scrollOffset.x / (DAY_WIDTH * scale));
-	  const endDay = Math.min(
-	    projectDuration,
-	    startDay + Math.ceil(containerRef.current.offsetWidth / (DAY_WIDTH * scale)) + 2
-	  );
-	
-	  for (let day = startDay; day <= endDay; day++) {
-	    if (day < 0) continue;
-	    const x = LABEL_WIDTH + day * DAY_WIDTH * scale;
-	    ctx.beginPath();
-	    ctx.moveTo(x, 0);
-	    ctx.lineTo(x, chartHeight);
-	    ctx.stroke();
-	  }
-	};
 
   const drawBorders = (ctx, chartWidth, chartHeight) => {
     
@@ -638,7 +644,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
     svg += `<text x="${LABEL_WIDTH + (projectDuration * DAY_WIDTH * scale) / 2}" y="25" font-family="Arial" font-size="16" font-weight="bold" fill="#1f2937" text-anchor="middle">Время (дни)</text>`;
     
    
-    for (let day = 0; day <= projectDuration; day++) {
+    for (let day = 0; day <= projectDuration+1; day++) {
       const x = LABEL_WIDTH + day * DAY_WIDTH * scale;
       if (x > chartWidth) break;
       
