@@ -5,11 +5,40 @@ const STORAGE_KEY = 'spu_project_autosave';
 
 export const useAutosave = (project, calculationResults) => {
   const intervalRef = useRef(null);
-  const lastSaveRef = useRef(null);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (project && project.tasks && project.tasks.length > 0) {
+        try {
+          const dataToSave = {
+            project,
+            calculationResults,
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+          };
+
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+          console.log('Проект сохранен перед закрытием.');
+        } catch (error) {
+          console.error('Ошибка сохранения перед закрытием:', error);
+        }
+      }
+    };
+
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [project, calculationResults]);
 
   useEffect(() => {
     const saveData = () => {
       try {
+        if (project.tasks.length === 0) return; 
+        
         const dataToSave = {
           project,
           calculationResults,
@@ -18,17 +47,12 @@ export const useAutosave = (project, calculationResults) => {
         };
         
         localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-        lastSaveRef.current = new Date();
-        
         console.log('Проект автоматически сохранен:', new Date().toLocaleTimeString());
       } catch (error) {
         console.error('Ошибка автосохранения:', error);
       }
     };
 
-    if (project.tasks.length > 0) {
-      saveData();
-    }
 
     intervalRef.current = setInterval(saveData, AUTOSAVE_INTERVAL);
 
@@ -41,45 +65,26 @@ export const useAutosave = (project, calculationResults) => {
 
   const loadAutosavedData = () => {
     try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
+      const savedData = localStorage.getItem(STORAGE_KEY); 
       if (savedData) {
-        const parsed = JSON.parse(savedData);
-        return {
-          project: parsed.project,
-          calculationResults: parsed.calculationResults,
-          timestamp: parsed.timestamp,
-          version: parsed.version
-        };
+        return JSON.parse(savedData);
       }
+      return null;
     } catch (error) {
-      console.error('Ошибка загрузки автосохраненных данных:', error);
+      console.error("Ошибка при чтении автосохраненных данных:", error);
+      return null;
     }
-    return null;
   };
 
   const clearAutosavedData = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.error('Ошибка очистки автосохраненных данных:', error);
-    }
+    localStorage.removeItem(STORAGE_KEY); 
   };
 
   const hasAutosavedData = () => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) !== null;
-    } catch (error) {
-      return false;
-    }
+    return !!localStorage.getItem(STORAGE_KEY); 
   };
 
-  return {
-    loadAutosavedData,
-    clearAutosavedData,
-    hasAutosavedData,
-    lastSave: lastSaveRef.current
-  };
+  return { loadAutosavedData, clearAutosavedData, hasAutosavedData };
 };
 
 export default useAutosave;
-

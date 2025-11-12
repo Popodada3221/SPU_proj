@@ -1,5 +1,18 @@
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, TextRun, HeadingLevel, ImageRun, PageOrientation } from 'docx';
 import { saveAs } from 'file-saver';
+import { HOURS_PER_DAY } from '../utils/spuCalculations.js';
+
+const formatNumber = (num) => {
+  const number = Number(num);
+  if (isNaN(number)) return '0.0';
+  if (Math.abs(number) < 1e-9) {
+    return '0.0';
+  }
+   if (number % 1 === 0) {
+    return String(number);
+  }
+   return String(parseFloat(number.toFixed(2)));
+};
 
 const arePlansEqual = (plan1, plan2) => {
     if (!plan1 || !plan2) return false;
@@ -20,7 +33,7 @@ const base64ToBuffer = (base64) => {
 };
 
 const createTaskListTable = (tasks) => {
-  const tableHeaders = ["ID", "Наименование", "Длительность (дн.)", "Трудоемкость (н-ч)", "Исполнители", "Предшественники"];
+  const tableHeaders = ["ID", "Наименование", "Продолжительность (дн.)", "Трудоемкость (н-ч)", "Исполнители", "Предшественники"];
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -43,17 +56,48 @@ const createTaskListTable = (tasks) => {
 };
 
 const createReportTable = (results) => {
-  const tableHeaders = ["ID", "Наименование", "Длит.", "Трудоем.", "Исп.", "Ран. нач.", "Ран. ок.", "Позд. нач.", "Позд. ок.", "Полн. рез.", "Част. рез.", "Крит."];
+  const tableHeaders = [
+    "Код",          
+    "Наименование",
+    "tᵢⱼ (ч)",      
+    "Qᵢⱼ (ч)",          
+    "qᵢⱼ (ч)",          
+    "Tᵖᵢ (ч)",          
+    "tᵖᵒᵢⱼ (ч)",        
+    "Tᵖⱼ (ч)",         
+    "Tпᵢ (ч)",         
+    "tпнᵢⱼ (ч)",       
+    "Tпⱼ (ч)",      
+    "Rⱼ (ч)",          
+    "Rчᵢⱼ (ч)",       
+    "Rпᵢⱼ (ч)",       
+    "Принадлежность к крит. пути"
+  ];
+
+  
+
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: 120, type: WidthType.PERCENTAGE },
+     alignment: AlignmentType.CENTER,
+
     rows: [
       new TableRow({ children: tableHeaders.map(text => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })], alignment: AlignmentType.CENTER })] })), tableHeader: true }),
       ...results.tasks.map(task => {
         const rowData = [
-          task.id, task.name, task.duration.toString(), (task.laborIntensity || 0).toString(), task.numberOfPerformers.toString(),
-          task.earlyStart?.toFixed(2) || '0.00', task.earlyFinish?.toFixed(2) || '0.00',
-          task.lateStart?.toFixed(2) || '0.00', task.lateFinish?.toFixed(2) || '0.00',
-          task.totalFloat?.toFixed(2) || '0.00', task.freeFloat?.toFixed(2) || '0.00',
+         task.id,
+          task.name,
+          formatNumber(task.durationHours),
+          formatNumber(task.laborIntensity),
+          task.numberOfPerformers.toString(),
+          formatNumber(task.earlyEventTimeI),
+          formatNumber(task.earlyFinish),
+          formatNumber(task.earlyEventTimeJ),
+          formatNumber(task.lateEventTimeI),
+          formatNumber(task.lateStartHours),
+          formatNumber(task.lateFinishHours),
+          formatNumber(task.eventFloatJ),
+          formatNumber(task.freeFloatHours),
+          formatNumber(task.totalFloatHours),
           (!task.isDummy && task.isCritical) ? 'Да' : 'Нет',
         ];
         return new TableRow({
@@ -87,6 +131,7 @@ export const generateAndSaveWordReport = async ({ baseline, optimized, networkRe
     const plansAreEqual = arePlansEqual(baseline, optimized);
     const hasComparison = baseline && baseline.results && !plansAreEqual;
     const mainContent = [];
+    
  
     mainContent.push(
       new Paragraph({ text: "Отчет по сетевому планированию и управлению", heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
@@ -96,18 +141,41 @@ export const generateAndSaveWordReport = async ({ baseline, optimized, networkRe
 
 
 
-    if (hasComparison) {
+   if (hasComparison) {
         const durBaseline = baseline.results.projectDuration;
         const durOptimized = optimized.results.projectDuration;
         const durDiff = durOptimized - durBaseline;
-        const laborBaseline = baseline.tasks.reduce((s, t) => s + (t.laborIntensity || 0), 0) || 1;
-        const laborOptimized = optimized.tasks.reduce((s, t) => s + (t.laborIntensity || 0), 0);
+        const laborBaseline = baseline.tasks.reduce((s, t) => s + (Number(t.laborIntensity) || 0), 0) || 1;
+        const laborOptimized = optimized.tasks.reduce((s, t) => s + (Number(t.laborIntensity) || 0), 0);
         const laborDiff = laborOptimized - laborBaseline;
 
         mainContent.push(
             new Paragraph({ text: "Ключевые выводы по оптимизации плана", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: `• Длительность проекта: ${durDiff > 0 ? 'увеличилась на' : 'сократилась на'} ${Math.abs(durDiff).toFixed(2)} дн. (изменение на ${durDiff >= 0 ? '+' : ''}${((durDiff / (durBaseline || 1)) * 100).toFixed(1)}%)` }),
-            new Paragraph({ text: `• Общая трудоемкость: ${laborDiff > 0 ? 'увеличилась на' : 'сократилась на'} ${Math.abs(laborDiff).toFixed(0)} н-ч. (изменение на ${laborDiff >= 0 ? '+' : ''}${((laborDiff / laborBaseline) * 100).toFixed(1)}%)` }),
+            new Paragraph({ text: `• Длительность проекта: ${durDiff >= 0 ? 'увеличилась на' : 'сократилась на'} ${Math.abs(durDiff).toFixed(2)} дн. (изменение на ${durDiff >= 0 ? '+' : ''}${((durDiff / (durBaseline || 1)) * 100).toFixed(1)}%)` }),
+            new Paragraph({ text: `• Общая трудоемкость: ${laborDiff >= 0 ? 'увеличилась на' : 'сократилась на'} ${Math.abs(laborDiff).toFixed(2)} н-ч. (изменение на ${laborDiff >= 0 ? '+' : ''}${((laborDiff / laborBaseline) * 100).toFixed(1)}%)` }),
+            new Paragraph({ text: "" })
+        );
+    } else {
+        const totalLabor = optimized.tasks.reduce((sum, task) => sum + (Number(task.laborIntensity) || 0), 0);
+        const projectDurationInHours = optimized.results.projectDuration * HOURS_PER_DAY;
+
+        mainContent.push(
+            new Paragraph({ text: "Ключевые параметры проекта", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({
+                bullet: { level: 0 },
+                children: [
+                    new TextRun({ text: `Итоговая длительность проекта: `, size: 22 }),
+                    new TextRun({ text: `${formatNumber(projectDurationInHours)} ч.`, bold: true, size: 22 }),
+                    new TextRun({ text: ` (${formatNumber(optimized.results.projectDuration)} дн.)`, size: 22 }),
+                ],
+            }),
+            new Paragraph({
+                bullet: { level: 0 },
+                children: [
+                    new TextRun({ text: `Общая трудоемкость проекта: `, size: 22 }),
+                    new TextRun({ text: `${formatNumber(totalLabor)} н-ч.`, bold: true, size: 22 }),
+                ],
+            }),
             new Paragraph({ text: "" })
         );
     }

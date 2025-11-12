@@ -1,11 +1,16 @@
+const Database = require('better-sqlite3');
 let db;
 
 function openDB(dbPath) {
-  const Database = require('better-sqlite3');
+
   db = new Database(dbPath, { readonly: true });
 }
 
 function searchTemplates(q = '') {
+  if (!db) { 
+    console.error("Search failed: DB is not open or initialized.");
+    return []; 
+  }
   const text = (q || '').trim();
   const like = `%${text}%`;
   const stmt = db.prepare(`
@@ -104,33 +109,12 @@ function getRequiredPredecessors(idOrCode, opts = {}) {
   return stmt.all(templateId);
 }
 
-function getAllRequiredTemplates() {
-  const stmt = db.prepare(`
-    SELECT
-      wt.id,
-      wt.code,
-      wt.title  AS name,
-      wt.description,
-      wt.base_duration_minutes,
-      wt.required_level,
-
-      wn.id     AS node_id,
-      wn.code   AS node_code,
-      wn.title  AS node_title,
-
-      wp.id     AS phase_id,
-      wp.code   AS phase_code,
-      wp.title  AS phase_title
-    FROM work_templates wt
-    JOIN wbs_node  wn ON wn.id = wt.wbs_node_id
-    JOIN wbs_phase wp ON wp.id = wn.phase_id
-    WHERE wt.required_level = 'required'
-    ORDER BY wp.id ASC, wn.id ASC, wt.id ASC
-  `);
-  return stmt.all();
-}
 
 function getAllRequiredTemplates() {
+  if (!db) {
+    console.error("Get predecessors failed: DB is not open.");
+    return [];
+  }
   const templates = db.prepare(`
     SELECT
       wt.id,

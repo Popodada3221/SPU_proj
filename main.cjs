@@ -49,7 +49,17 @@ function createWindow() {
   win.webContents.on('crashed', () => {
     console.log('Renderer process crashed');
   });
+   let forceQuit = false;
 
+  win.on('close', (event) => {
+    if (!forceQuit) {
+      event.preventDefault();
+      win.webContents.send('check-before-quit');
+    }
+  });
+  app.on('before-quit', () => {
+    forceQuit = true;
+  });
   return win;
 }
 
@@ -70,6 +80,11 @@ ipcMain.handle("write-file", async (event, filePath, data) => {
   }
 });
 
+ipcMain.on('quit-response', (event, userWantsToQuit) => {
+  if (userWantsToQuit) {
+    app.quit();
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
