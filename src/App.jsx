@@ -24,12 +24,15 @@ import {
   BookOpen 
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import GostViewer from './components/GostViewer';
 import TaskInput from './components/TaskInput';
@@ -70,18 +73,19 @@ function App() {
     const [calculationResults, setCalculationResults] = useState(null);
     const [userOverrides, setUserOverrides] = useState({});
     const [history, setHistory] = useState([]);
-  const [validationErrors, setValidationErrors] = useState([]);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [activeTab, setActiveTab] = useState('input');
-  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
-  const [appZoom, setAppZoom] = useState(1);
-  const [isNetworkFullScreen, setIsNetworkFullScreen] = useState(false);
-  const [networkRenderMode, setNetworkRenderMode] = useState("aoa");calculateNetworkParameters
-  const networkDiagramRef = useRef(null);
-  const ganttChartRef = useRef(null); const userGuideRef = useRef(null);
-  const [isExportingWord, setIsExportingWord] = useState(false);
-  const { loadAutosavedData, clearAutosavedData, hasAutosavedData } = useAutosave(project, calculationResults);
-  const [isGostModalOpen, setGostModalOpen] = useState(false);
+    const [validationErrors, setValidationErrors] = useState([]);
+    const [isCalculating, setIsCalculating] = useState(false);
+    const [activeTab, setActiveTab] = useState('input');
+    const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+    const [appZoom, setAppZoom] = useState(1);
+    const [isNetworkFullScreen, setIsNetworkFullScreen] = useState(false);
+    const [networkRenderMode, setNetworkRenderMode] = useState("aoa");calculateNetworkParameters
+    const networkDiagramRef = useRef(null);
+    const ganttChartRef = useRef(null); const userGuideRef = useRef(null);
+    const [isExportingWord, setIsExportingWord] = useState(false);
+    const { loadAutosavedData, clearAutosavedData, hasAutosavedData } = useAutosave(project, calculationResults);
+     const [showQuitDialog, setShowQuitDialog] = useState(false);
+    const [isGostModalOpen, setGostModalOpen] = useState(false);
 
    const liveResults = calculationResults 
             ? {
@@ -100,7 +104,21 @@ function App() {
               }
             : null;
   
+   useEffect(() => {
+    const handleQuitCheck = () => {
+      if (project.tasks.length === 0) {
+        window.electronAPI.sendQuitResponse(true);
+        return;
+      }
+      setShowQuitDialog(true);
+    };
 
+    window.electronAPI.onCheckBeforeQuit(handleQuitCheck);
+
+    return () => {
+      window.electronAPI.removeAllListeners('check-before-quit');
+    };
+  }, [project.tasks]);
 
   useEffect(() => {
   const off = window.electronAPI?.onMenuShowGost?.(() => {
@@ -196,6 +214,16 @@ function App() {
   const originalResults = calculateNetworkParameters(project.tasks);
   setCalculationResults(originalResults);
 };
+
+  const handleConfirmQuit = () => {
+    setShowQuitDialog(false);
+    window.electronAPI.sendQuitResponse(true);
+  };
+
+  const handleCancelQuit = () => {
+    setShowQuitDialog(false);
+    window.electronAPI.sendQuitResponse(false);
+  };
 
  const handleExportToWord = async () => {
   if (!calculationResults) {
@@ -724,24 +752,29 @@ const handleTaskUpdate = async (taskId, updates) => {
     }
   };
 
-  const handleTabChange = (newTab) => {
-    setActiveTab(newTab);
-    logger.logUserAction('CHANGE_TAB', { tab: newTab });
-  };
+    const handleTabChange = (newTab) => {
+      setActiveTab(newTab);
+      logger.logUserAction('CHANGE_TAB', { tab: newTab });
+    };
 
-  const handleRecoverData = () => {
+    const handleRecoverData = () => {
     try {
-      const recoveredData = loadAutosavedData();
-      if (recoveredData) {
+      const recoveredData = loadAutosavedData(); 
+      
+      if (recoveredData && recoveredData.project) {
         setProject(recoveredData.project);
-        setCalculationResults(recoveredData.calculationResults);
-        setShowRecoveryDialog(false);
+        setCalculationResults(recoveredData.calculationResults || null);
+        
         logger.logUserAction('RECOVER_AUTOSAVED_DATA', {
           timestamp: recoveredData.timestamp
         });
       }
     } catch (error) {
       logger.logError('RECOVER_DATA_ERROR', { error: error.message });
+      alert('Ошибка при восстановлении данных.');
+    } finally {
+      clearAutosavedData();
+      setShowRecoveryDialog(false);
     }
   };
 
@@ -988,11 +1021,7 @@ const handleTaskUpdate = async (taskId, updates) => {
                 </Card>
               );
             }
-
-              
-            
-
-         
+        
             return (
               <GanttChart
                 ref={ganttChartRef}
@@ -1109,7 +1138,23 @@ const handleTaskUpdate = async (taskId, updates) => {
       </div>
       </>
       )}
-
+        <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подтверждение выхода</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите выйти? Все несохраненные изменения будут потеряны.
+              Рекомендуется сохранить проект перед выходом.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelQuit}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmQuit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Выйти
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
        <UserGuide ref={userGuideRef} />
         <GostViewer open={isGostModalOpen} onOpenChange={setGostModalOpen} />
        {calculationResults && (

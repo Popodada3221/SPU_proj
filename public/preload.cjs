@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuExportWord:   (cb) => ipcRenderer.on('menu-export-word', cb),
   onMenuLoadExampleRequired: (cb) => ipcRenderer.on('menu-load-example-required', cb),
 
+  onCheckBeforeQuit: (callback) => ipcRenderer.on('check-before-quit', callback),
+  sendQuitResponse: (userWantsToQuit) => ipcRenderer.send('quit-response', userWantsToQuit),
+
 
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 
