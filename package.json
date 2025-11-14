@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "electron-dev": "concurrently \"pnpm run dev\" \"wait-on http://localhost:5173 && electron public/electron.cjs\"",
+    "electron-dev-linux": "concurrently \"pnpm run dev\" \"wait-on http://localhost:5173 && electron public/electron.cjs --no-sandbox\"",
     "postinstall": "electron-rebuild",
     "build": "vite build && node build-scripts/post-build.js",
     "preview": "vite preview",

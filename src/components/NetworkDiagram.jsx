@@ -103,16 +103,24 @@ const NetworkDiagram = forwardRef(({ results, onRenderModeChange, isFullScreen, 
       });
 
       aonNodes.forEach(nodeTask => {
-        const successors = results.successorsMap?.get(nodeTask.id) || [];
-        successors.forEach(succId => {
-          const successorTask = aonNodes.find(t => t.id === succId);
-          if (successorTask) {
-            g.setEdge(nodeTask.id, succId, {
-                isCritical: nodeTask.isCritical && successorTask.isCritical,
-            });
+        aonNodes.forEach(succTask => {
+          if(nodeTask.id.split('-')[1] === succTask.id.split('-')[0] ) {
+            console.log(nodeTask);
+            g.setEdge(nodeTask.id, succTask.id, 
+                {
+                    isCritical: nodeTask.isCritical && succTask.isCritical,
+                    isDummy: nodeTask.duration == 0 || succTask.duration == 0,
+                    width: 10,
+                    height: 10,
+                    labelpos: 'c',
+                    labeloffset: 15,
+                }
+
+            );
           }
         });
       });
+        
 
     } else {
       const nodeIds = new Set();
@@ -220,7 +228,7 @@ const NetworkDiagram = forwardRef(({ results, onRenderModeChange, isFullScreen, 
     layout.edges().forEach(edgeInfo => {
       const edge = layout.edge(edgeInfo);
       if (renderMode === 'aon') {
-        drawAonEdge(ctx, edge);
+        drawAoaEdge(ctx, edge);
       } else {
         drawAoaEdge(ctx, edge);
       }
