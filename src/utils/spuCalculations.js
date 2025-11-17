@@ -61,9 +61,14 @@ export class SPUCalculation {
       const earlyTime = earlyEventTime.get(node) || 0;
       for (const task of (outgoing.get(node) || [])) {
         const override = overrides[task.id];
-        task.ES = (override && override.userDefinedStart !== undefined) ? override.userDefinedStart : earlyTime;
+        task.ES = earlyTime;
         task.EF = task.ES + task.duration;
-        earlyEventTime.set(task.to, Math.max(earlyEventTime.get(task.to) || 0, task.EF));
+        
+
+        const finishToUseForNextNode = (override && override.userDefinedStart !== undefined) 
+                                       ? (override.userDefinedStart + task.duration) 
+                                       : task.EF;
+        earlyEventTime.set(task.to, Math.max(earlyEventTime.get(task.to) || 0, finishToUseForNextNode));
       }
     }
 
@@ -201,7 +206,7 @@ export class SPUCalculation {
         lateEventTimeI: lateEventTimeI * HOURS_PER_DAY,
         lateStartHours: spuTask.LS*HOURS_PER_DAY, 
         lateFinishHours: spuTask.LF * HOURS_PER_DAY,
-        lateFinish: spuTask.LF,
+        lateFinish: spuTask.LF ,
         eventFloatJ: (lateEventTimeJ - earlyEventTimeJ) * HOURS_PER_DAY,
         freeFloatHours: spuTask.freeFloat * HOURS_PER_DAY, 
         totalFloatHours: spuTask.totalFloat * HOURS_PER_DAY, 

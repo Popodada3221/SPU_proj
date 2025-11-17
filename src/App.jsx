@@ -95,8 +95,8 @@ function App() {
                   if (override && override.userDefinedStart !== undefined) {
                     return {
                       ...task,
-                      earlyStart: override.userDefinedStart,
-                      earlyFinish: override.userDefinedStart + task.duration,
+                      userDefinedStart: override.userDefinedStart,
+                       userDefinedFinish: override.userDefinedStart + task.duration,
                     };
                   }
                   return task;
@@ -400,52 +400,6 @@ function App() {
     input.click();
   };
 
-  const handleAddTask = (task) => {
-    try {
-      const newTask = {
-        ...task,
-        id: task.id || `${task.from}-${task.to}`,
-        laborIntensity: task.laborIntensity || task.duration * 8,
-        numberOfPerformers: task.numberOfPerformers || 1
-      };
-
-      const updatedTasks = [...project.tasks, newTask];
-      setProject(prev => ({ ...prev, tasks: updatedTasks }));
-      
-      logger.logUserAction('ADD_TASK', {
-        taskId: newTask.id,
-        taskName: newTask.name,
-        duration: newTask.duration,
-        laborIntensity: newTask.laborIntensity,
-        numberOfPerformers: newTask.numberOfPerformers
-      });
-      
-      setCalculationResults(null);
-      setValidationErrors([]);
-    } catch (error) {
-      logger.logError('ADD_TASK_ERROR', { error: error.message, task });
-    }
-  };
-
-  const handleUpdateTask = (taskId, updatedTask) => {
-    try {
-      const updatedTasks = project.tasks.map(task => 
-        task.id === taskId ? { ...task, ...updatedTask } : task
-      );
-      setProject(prev => ({ ...prev, tasks: updatedTasks }));
-      
-      logger.logUserAction('UPDATE_TASK', {
-        taskId,
-        updatedFields: Object.keys(updatedTask)
-      });
-      
-      setCalculationResults(null);
-      setValidationErrors([]);
-    } catch (error) {
-      logger.logError('UPDATE_TASK_ERROR', { error: error.message, taskId, updatedTask });
-    }
-  };
-
 const handleTaskUpdate = async (taskId, updates) => {
   setHistory(prev => [...prev, userOverrides]);
   const newOverrides = {
@@ -470,19 +424,7 @@ const handleTaskUpdate = async (taskId, updates) => {
   setIsCalculating(false);
 };
 
-  const handleDeleteTask = (taskId) => {
-    try {
-      const updatedTasks = project.tasks.filter(task => task.id !== taskId);
-      setProject(prev => ({ ...prev, tasks: updatedTasks }));
-      
-      logger.logUserAction('DELETE_TASK', { taskId });
-      
-      setCalculationResults(null);
-      setValidationErrors([]);
-    } catch (error) {
-      logger.logError('DELETE_TASK_ERROR', { error: error.message, taskId });
-    }
-  };
+ 
 
  
   const chooseExampleVariant = async () => {

@@ -146,14 +146,15 @@ const handleMouseDown = useCallback((e) => {
   const task = tasks[taskIndex];
 
   if (task && !task.isCritical && !task.isDummy) {
-    const taskStartPixel = LABEL_WIDTH + task.earlyStart * DAY_WIDTH;
+    const currentStart = task.userDefinedStart !== undefined ? task.userDefinedStart : task.earlyStart;
+    const taskStartPixel = LABEL_WIDTH + currentStart  * DAY_WIDTH;
     const taskEndPixel = taskStartPixel + task.duration * DAY_WIDTH;
-
     if (x >= taskStartPixel && x <= taskEndPixel) {
+      const initialStartValue = task.userDefinedStart !== undefined ? task.userDefinedStart : task.earlyStart;
       setDraggingTask({
         task: task,
         initialX: e.clientX,
-        initialStart: task.earlyStart,
+        initialStart:initialStartValue,
       });
       canvas.style.cursor = 'grabbing';
       return; 
@@ -535,7 +536,7 @@ ctx.fillText('Дни проекта', LABEL_WIDTH + (chartWidth - LABEL_WIDTH) /
 	    ctx.fillText(`👥 ${task.numberOfPerformers} исп.`, 15, taskY + TASK_HEIGHT / 2 + 16);
 	  }
 
-  let currentStart = task.earlyStart || 0;
+  let currentStart = task.userDefinedStart !== undefined ? task.userDefinedStart : task.earlyStart || 0; 
   if (draggingTask && draggingTask.task.id === task.id) {
      currentStart = draggingTask.initialStart + dragOffset;
   }
